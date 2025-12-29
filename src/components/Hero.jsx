@@ -14,7 +14,7 @@ export default function Hero() {
           className="w-full h-full object-cover opacity-60 scale-105" // slight scale prevents white edges
         >
           {/* Ensure the video is in your /public folder or use the relative path */}
-          <source src="/src/assets/lupora-hero-video.mp4" type="video/mp4" />
+          <source src="/lupora-web-experience/lupora-hero-video.mp4" type="video/mp4" />
         </video>
         {/* Luxury Vignette Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
