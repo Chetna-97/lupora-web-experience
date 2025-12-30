@@ -6,7 +6,11 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://chetna-97.github.io'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
 app.use(express.json());
 
 // 1. Connection String - uses .env locally, or Environment Variables on GitHub/Hosting
