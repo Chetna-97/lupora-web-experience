@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function Navbar() {
   return (
@@ -6,7 +7,7 @@ export default function Navbar() {
       <div className="text-2xl font-serif tracking-tighter text-white">LUPORA</div>
       <div className="hidden md:flex space-x-8 text-[10px] tracking-[0.3em] uppercase text-gray-400">
         <a href="#" className="hover:text-[#C5A059]">The Essence</a>
-        <a href="#" className="hover:text-[#C5A059]">Collection</a>
+        <Link to="/gallery" className="hover:text-[#C5A059]">Collection</Link>
         <a href="https://www.instagram.com/lupora_perfumes/" target="_blank" className="hover:text-[#C5A059]">Instagram</a>
       </div>
       <button className="text-[10px] tracking-widest border border-white/20 px-6 py-2 hover:bg-[#C5A059] transition-all">SHOP</button>

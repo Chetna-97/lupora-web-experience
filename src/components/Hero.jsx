@@ -1,21 +1,41 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export default function Hero() {
+  const [heroVideo, setHeroVideo] = useState(null);
+
+  useEffect(() => {
+    const getHeroVideo = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/media');
+        if (!response.ok) throw new Error("Server response was not ok");
+        const data = await response.json();
+        const video = data.find(item => item.type === 'video');
+        if (video) {
+          setHeroVideo(video);
+        }
+      } catch (err) {
+        console.error("❌ Frontend Fetch Error:", err.message);
+      }
+    };
+    getHeroVideo();
+  }, []);
+
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* 1. The Video Background - Replaces the 3D Sphere */}
+      {/* 1. The Video Background - Fetched from Database */}
       <div className="absolute inset-0 z-0">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full object-cover opacity-60 scale-105" // slight scale prevents white edges
-        >
-          {/* Ensure the video is in your /public folder or use the relative path */}
-          <source src="/lupora-web-experience/lupora-hero-video.mp4" type="video/mp4" />
-        </video>
+        {heroVideo && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover opacity-60 scale-105"
+          >
+            <source src={`/lupora-web-experience${heroVideo.url}`} type="video/mp4" />
+          </video>
+        )}
         {/* Luxury Vignette Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
       </div>
