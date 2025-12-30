@@ -7,7 +7,7 @@ export default function Hero() {
   useEffect(() => {
     const getHeroVideo = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/media');
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/media`);
         if (!response.ok) throw new Error("Server response was not ok");
         const data = await response.json();
         const video = data.find(item => item.type === 'video');
