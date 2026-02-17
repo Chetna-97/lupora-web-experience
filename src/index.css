@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Add this for the smooth scrolling Mont-Fort feel */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #000;
+  color: #fff;
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background-color: black;
+  color: white;
+  font-family: 'serif'; /* Montfort uses elegant serif fonts */
+}
+
+/* This fixes the "Broken" layout by positioning the 3D scene correctly */
+canvas {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  outline: none;
+  z-index: 0;
+}
+
+/* Ensure content sits on top of the 3D animation */
+main, section, nav, footer {
+  position: relative;
+  z-index: 10;
+  pointer-events: none; /* Allows mouse to interact with 3D behind text */
+}
+
+a, button {
+  pointer-events: auto; /* Re-enables clicking for buttons */
+}
