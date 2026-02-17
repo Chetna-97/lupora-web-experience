@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
+function ProductSkeleton({ offset }) {
+  return (
+    <div className={`relative ${offset ? 'md:mt-32' : ''}`}>
+      <div className="aspect-[3/4] bg-neutral-800 animate-pulse rounded" />
+      <div className="mt-8">
+        <div className="h-2 w-24 bg-neutral-800 animate-pulse rounded mb-3" />
+        <div className="h-5 w-40 bg-neutral-800 animate-pulse rounded" />
+      </div>
+    </div>
+  );
+}
+
 export default function Gallery({ limit }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,8 +34,6 @@ export default function Gallery({ limit }) {
     getProducts();
   }, []);
 
-  if (loading) return <div className="text-white text-center py-20 bg-black">Loading Lupora Collection...</div>;
-
   // Apply limit if provided
   const displayProducts = limit ? products.slice(0, limit) : products;
 
@@ -42,7 +52,13 @@ export default function Gallery({ limit }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-24">
-          {displayProducts.length > 0 ? displayProducts.map((product, index) => (
+          {loading ? (
+            <>
+              {Array.from({ length: limit || 4 }).map((_, i) => (
+                <ProductSkeleton key={i} offset={i % 2 !== 0} />
+              ))}
+            </>
+          ) : displayProducts.length > 0 ? displayProducts.map((product, index) => (
             <motion.div
               key={product._id || product.id}
               initial={{ opacity: 0, y: 50 }}
@@ -57,6 +73,8 @@ export default function Gallery({ limit }) {
                   transition={{ duration: 1.5, ease: "easeOut" }}
                   src={`/lupora-web-experience${product.image}`}
                   alt={product.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700"
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">

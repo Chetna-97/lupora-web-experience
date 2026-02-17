@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
+function ProductSkeleton() {
+  return (
+    <div className="relative">
+      <div className="aspect-[3/4] bg-neutral-800 animate-pulse rounded" />
+      <div className="mt-6">
+        <div className="h-2 w-24 bg-neutral-800 animate-pulse rounded mb-3" />
+        <div className="h-4 w-36 bg-neutral-800 animate-pulse rounded" />
+      </div>
+    </div>
+  );
+}
+
 export default function GalleryPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,14 +34,6 @@ export default function GalleryPage() {
     getProducts();
     window.scrollTo(0, 0);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center">Loading Lupora Collection...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -79,39 +83,49 @@ export default function GalleryPage() {
 
           {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
-            {products.map((product, index) => (
-              <motion.div
-                key={product._id || product.id}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="relative group"
-              >
-                <div className="overflow-hidden aspect-[3/4] bg-neutral-900 relative">
-                  <motion.img
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    src={`/lupora-web-experience${product.image}`}
-                    alt={product.name}
-                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                    <button className="px-8 py-3 border border-white text-white text-[10px] tracking-widest uppercase hover:bg-white hover:text-black transition-all">
-                      View Details
-                    </button>
+            {loading ? (
+              <>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <ProductSkeleton key={i} />
+                ))}
+              </>
+            ) : (
+              products.map((product, index) => (
+                <motion.div
+                  key={product._id || product.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  className="relative group"
+                >
+                  <div className="overflow-hidden aspect-[3/4] bg-neutral-900 relative">
+                    <motion.img
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      src={`/lupora-web-experience${product.image}`}
+                      alt={product.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
+                      <button className="px-8 py-3 border border-white text-white text-[10px] tracking-widest uppercase hover:bg-white hover:text-black transition-all">
+                        View Details
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-6">
-                  <p className="text-[#C5A059] text-[9px] uppercase tracking-[0.3em] mb-2">
-                    {product.category}
-                  </p>
-                  <h3 className="text-white text-xl font-serif tracking-tight">
-                    {product.name}
-                  </h3>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="mt-6">
+                    <p className="text-[#C5A059] text-[9px] uppercase tracking-[0.3em] mb-2">
+                      {product.category}
+                    </p>
+                    <h3 className="text-white text-xl font-serif tracking-tight">
+                      {product.name}
+                    </h3>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
 
           {/* Back to Home Button */}

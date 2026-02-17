@@ -2,10 +2,12 @@ require('dotenv').config(); // MUST be the first line
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const compression = require('compression');
 
 const app = express();
 
 // Middleware
+app.use(compression()); // gzip responses — reduces payload size significantly
 app.use(cors({
     origin: ['http://localhost:5173', 'https://chetna-97.github.io'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -58,11 +60,21 @@ const mediaSchema = new mongoose.Schema({
 
 const Media = mongoose.model('Media', mediaSchema);
 
+// In-memory cache to avoid hitting MongoDB on every request
+let productsCache = null;
+let mediaCache = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function isCacheValid() {
+    return Date.now() - cacheTimestamp < CACHE_TTL;
+}
+
 // 4. API Routes
 // Health check route
 app.get('/', (req, res) => res.send("Lupora Server is Running..."));
 
-// Fetch products route
+// Fetch products route — with in-memory cache
 app.get('/api/products', async (req, res) => {
     try {
         // Check if MongoDB is connected
@@ -71,9 +83,21 @@ app.get('/api/products', async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
+        // Return cached data if valid
+        if (productsCache && isCacheValid()) {
+            res.set('Cache-Control', 'public, max-age=300');
+            return res.status(200).json(productsCache);
+        }
+
         console.log("📦 Fetching products from database...");
         const products = await Product.find().lean();
         console.log(`✅ Found ${products.length} products`);
+
+        // Update cache
+        productsCache = products;
+        cacheTimestamp = Date.now();
+
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(products);
     } catch (error) {
         console.error("🔥 API Error:", error.message);
@@ -82,7 +106,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// Fetch media/videos route
+// Fetch media/videos route — with in-memory cache
 app.get('/api/media', async (req, res) => {
     try {
         if (!isConnected) {
@@ -90,9 +114,21 @@ app.get('/api/media', async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
+        // Return cached data if valid
+        if (mediaCache && isCacheValid()) {
+            res.set('Cache-Control', 'public, max-age=300');
+            return res.status(200).json(mediaCache);
+        }
+
         console.log("🎬 Fetching media from database...");
         const media = await Media.find().lean();
         console.log(`✅ Found ${media.length} media items`);
+
+        // Update cache
+        mediaCache = media;
+        cacheTimestamp = Date.now();
+
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(media);
     } catch (error) {
         console.error("🔥 API Error:", error.message);
@@ -104,4 +140,14 @@ app.get('/api/media', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+    // Keep-alive: ping self every 14 minutes to prevent Render free tier from sleeping
+    const RENDER_URL = process.env.RENDER_URL;
+    if (RENDER_URL) {
+        setInterval(() => {
+            fetch(RENDER_URL)
+                .then(() => console.log("🏓 Keep-alive ping sent"))
+                .catch(() => console.log("⚠️ Keep-alive ping failed"));
+        }, 14 * 60 * 1000); // 14 minutes
+    }
 });

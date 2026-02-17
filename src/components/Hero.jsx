@@ -31,6 +31,7 @@ export default function Hero() {
             muted
             loop
             playsInline
+            preload="auto"
             className="w-full h-full object-cover opacity-60 scale-105"
           >
             <source src={`/lupora-web-experience${heroVideo.url}`} type="video/mp4" />
@@ -53,7 +54,7 @@ export default function Hero() {
           </span>
         </motion.div>
 
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.5, delay: 0.5 }}
@@ -62,7 +63,7 @@ export default function Hero() {
           Lupora
         </motion.h1>
 
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
@@ -71,7 +72,7 @@ export default function Hero() {
           Signature Fragrances <br/> Inspired by Eternal Nature
         </motion.p>
 
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.05, backgroundColor: "white", color: "black" }}
           className="mt-12 px-12 py-4 border border-white/20 text-white text-[9px] tracking-[0.5em] uppercase transition-all duration-700"
         >
