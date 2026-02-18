@@ -30,22 +30,7 @@ export default function CartPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black">
-            {/* Header */}
-            <div className="py-8 px-6 md:px-12 border-b border-white/10">
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <Link to="/" className="text-white text-2xl font-serif italic">
-                        Lupora
-                    </Link>
-                    <Link
-                        to="/"
-                        className="text-white text-[10px] tracking-[0.3em] uppercase hover:text-[#C5A059] transition-colors"
-                    >
-                        Back to Home
-                    </Link>
-                </div>
-            </div>
-
+        <div className="min-h-screen bg-black pt-24">
             {/* Cart Content */}
             <section className="py-24 px-6 md:px-12">
                 <div className="max-w-4xl mx-auto">
@@ -180,6 +165,12 @@ export default function CartPage() {
                                     </span>
                                 </div>
 
+                                <Link
+                                    to="/checkout"
+                                    className="block w-full text-center py-4 bg-[#C5A059] text-black text-[10px] tracking-[0.3em] uppercase font-medium hover:bg-[#d4af6a] transition-all duration-500 mb-4"
+                                >
+                                    Proceed to Checkout
+                                </Link>
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     <Link
                                         to="/gallery"
@@ -200,14 +191,6 @@ export default function CartPage() {
                 </div>
             </section>
 
-            {/* Footer */}
-            <div className="py-8 px-6 md:px-12 border-t border-white/10">
-                <div className="max-w-7xl mx-auto text-center">
-                    <p className="text-gray-500 text-[10px] tracking-widest uppercase">
-                        Lupora Perfumes - Crafted with Nature's Finest
-                    </p>
-                </div>
-            </div>
         </div>
     );
 }

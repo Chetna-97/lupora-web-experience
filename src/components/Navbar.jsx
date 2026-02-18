@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, User, LogOut } from 'lucide-react';
+import { ShoppingBag, User, LogOut, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,6 +20,9 @@ export default function Navbar() {
         {/* User Auth */}
         {isAuthenticated ? (
           <div className="flex items-center gap-3">
+            <Link to="/orders" className="text-gray-400 hover:text-[#C5A059] transition-colors" title="My Orders">
+              <Package size={18} strokeWidth={1.5} />
+            </Link>
             <span className="hidden md:block text-gray-400 text-[10px] tracking-[0.2em] uppercase">
               {user.name}
             </span>

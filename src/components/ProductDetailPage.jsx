@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Minus, Plus, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -66,23 +66,7 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
-      <div className="py-8 px-6 md:px-12 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="text-white text-2xl font-serif italic">
-            Lupora
-          </Link>
-          <Link
-            to="/gallery"
-            className="flex items-center gap-2 text-white text-[10px] tracking-[0.3em] uppercase hover:text-[#C5A059] transition-colors"
-          >
-            <ArrowLeft size={14} strokeWidth={1.5} />
-            Back to Collection
-          </Link>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-black pt-24">
       {/* Product Detail */}
       <section className="py-16 md:py-24 px-6 md:px-12">
         <div className="max-w-6xl mx-auto">
@@ -189,14 +173,6 @@ export default function ProductDetailPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <div className="py-8 px-6 md:px-12 border-t border-white/10">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-gray-500 text-[10px] tracking-widest uppercase">
-            Lupora Perfumes - Crafted with Nature's Finest
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

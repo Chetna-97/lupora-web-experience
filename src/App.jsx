@@ -9,6 +9,9 @@ import Gallery from './components/Gallery';
 import GalleryPage from './components/GalleryPage';
 import CartPage from './components/CartPage';
 import ProductDetailPage from './components/ProductDetailPage';
+import CheckoutPage from './components/CheckoutPage';
+import OrderConfirmationPage from './components/OrderConfirmationPage';
+import OrdersPage from './components/OrdersPage';
 import Footer from "./components/Footer.jsx";
 
 function HomePage() {
@@ -18,7 +21,6 @@ function HomePage() {
 
   return (
     <main>
-      <Navbar />
       <section id="hero">
         <Hero />
       </section>
@@ -41,9 +43,6 @@ function HomePage() {
           View Gallery
         </button>
       </section>
-      <section id="footer">
-        <Footer />
-      </section>
     </main>
   );
 }
@@ -53,13 +52,18 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router basename="/lupora-web-experience">
+          <Navbar />
           <AuthModal />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
           </Routes>
+          <Footer />
         </Router>
       </CartProvider>
     </AuthProvider>

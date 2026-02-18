@@ -5,6 +5,9 @@ const cors = require('cors');
 const compression = require('compression');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
 
 const app = express();
 
@@ -90,6 +93,127 @@ const cartSchema = new mongoose.Schema({
 cartSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
 const Cart = mongoose.model('Cart', cartSchema);
+
+// Order Schema
+const orderSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    items: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: String,
+        price: Number,
+        quantity: Number,
+        image: String
+    }],
+    totalAmount: { type: Number, required: true },
+    shippingAddress: {
+        fullName: { type: String, required: true },
+        phone: { type: String, required: true },
+        address: { type: String, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        pincode: { type: String, required: true }
+    },
+    customerEmail: { type: String },
+    paymentMethod: { type: String, enum: ['cod', 'razorpay'], required: true },
+    paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
+    orderStatus: { type: String, enum: ['placed', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'placed' }
+}, { collection: 'orders', timestamps: true });
+
+const Order = mongoose.model('Order', orderSchema);
+
+// Razorpay instance (only if keys are configured)
+let razorpayInstance = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    razorpayInstance = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+}
+
+// Email helper — sends order notification to shop owner + confirmation to customer
+async function sendOrderEmails(order) {
+    const ownerEmail = process.env.OWNER_EMAIL;
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+        console.log('⚠️ Email not configured, skipping notifications');
+        return;
+    }
+
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: emailUser, pass: emailPass }
+    });
+
+    const itemsList = order.items.map(item =>
+        `  • ${item.name} x${item.quantity} — ₹${(item.price * item.quantity).toLocaleString('en-IN')}`
+    ).join('\n');
+
+    const addr = order.shippingAddress;
+    const orderId = order._id.toString().slice(-8).toUpperCase();
+
+    // 1. Email to shop owner
+    if (ownerEmail) {
+        try {
+            await transporter.sendMail({
+                from: emailUser,
+                to: ownerEmail,
+                subject: `🛒 New Order #${orderId} — Lupora Perfumes`,
+                text: `NEW ORDER RECEIVED\n` +
+                      `──────────────────\n\n` +
+                      `Order ID: ${order._id}\n` +
+                      `Customer Email: ${order.customerEmail || 'Not provided'}\n` +
+                      `Date: ${new Date(order.createdAt).toLocaleString('en-IN')}\n` +
+                      `Payment: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay (Online)'}\n` +
+                      `Payment Status: ${order.paymentStatus}\n\n` +
+                      `ITEMS:\n${itemsList}\n\n` +
+                      `Total: ₹${order.totalAmount.toLocaleString('en-IN')}\n\n` +
+                      `SHIP TO:\n` +
+                      `  ${addr.fullName}\n` +
+                      `  ${addr.phone}\n` +
+                      `  ${addr.address}\n` +
+                      `  ${addr.city}, ${addr.state} — ${addr.pincode}\n`
+            });
+            console.log('📧 Owner notification email sent');
+        } catch (err) {
+            console.error('📧 Owner email failed:', err.message);
+        }
+    }
+
+    // 2. Confirmation email to customer
+    if (order.customerEmail) {
+        try {
+            await transporter.sendMail({
+                from: `"Lupora Perfumes" <${emailUser}>`,
+                to: order.customerEmail,
+                subject: `Thank you for your order! #${orderId}`,
+                text: `Dear ${addr.fullName},\n\n` +
+                      `Thank you for shopping with Lupora Perfumes! ✨\n\n` +
+                      `Your order has been placed successfully.\n\n` +
+                      `ORDER DETAILS\n` +
+                      `─────────────\n` +
+                      `Order ID: #${orderId}\n` +
+                      `Date: ${new Date(order.createdAt).toLocaleString('en-IN')}\n\n` +
+                      `ITEMS:\n${itemsList}\n\n` +
+                      `Total: ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
+                      `Payment: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}\n\n` +
+                      `SHIPPING TO:\n` +
+                      `  ${addr.address}\n` +
+                      `  ${addr.city}, ${addr.state} — ${addr.pincode}\n\n` +
+                      `We will notify you when your order is shipped.\n\n` +
+                      `With love,\n` +
+                      `Team Lupora 🌿\n` +
+                      `www.instagram.com/lupora_perfumes\n`
+            });
+            console.log('📧 Customer confirmation email sent');
+        } catch (err) {
+            console.error('📧 Customer email failed:', err.message);
+        }
+    }
+}
 
 // In-memory cache to avoid hitting MongoDB on every request
 let productsCache = null;
@@ -467,6 +591,178 @@ app.delete('/api/cart/clear', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Cart clear error:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Order Routes
+
+// Create order from cart
+app.post('/api/orders', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: "Database not connected" });
+        }
+
+        const { shippingAddress, customerEmail, paymentMethod, razorpayPaymentId, razorpayOrderId } = req.body;
+
+        if (!shippingAddress || !paymentMethod) {
+            return res.status(400).json({ message: 'Shipping address and payment method required' });
+        }
+
+        const { fullName, phone, address, city, state, pincode } = shippingAddress;
+        if (!fullName || !phone || !address || !city || !state || !pincode) {
+            return res.status(400).json({ message: 'All shipping address fields are required' });
+        }
+
+        // Fetch user's cart with product details
+        const cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId');
+        if (!cart || cart.items.length === 0) {
+            return res.status(400).json({ message: 'Cart is empty' });
+        }
+
+        // Build order items snapshot
+        const orderItems = cart.items
+            .filter(item => item.productId != null)
+            .map(item => ({
+                productId: item.productId._id,
+                name: item.productId.name,
+                price: item.productId.price,
+                quantity: item.quantity,
+                image: item.productId.image
+            }));
+
+        const totalAmount = orderItems.reduce(
+            (sum, item) => sum + (item.price * item.quantity), 0
+        );
+
+        const order = new Order({
+            userId: req.user.id,
+            items: orderItems,
+            totalAmount,
+            shippingAddress: { fullName, phone, address, city, state, pincode },
+            customerEmail: customerEmail || null,
+            paymentMethod,
+            paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+            razorpayPaymentId: razorpayPaymentId || null,
+            razorpayOrderId: razorpayOrderId || null
+        });
+
+        await order.save();
+
+        // Clear cart after successful order
+        await Cart.findOneAndDelete({ userId: req.user.id });
+
+        // Send email notifications (non-blocking)
+        sendOrderEmails(order);
+
+        res.status(201).json({
+            message: 'Order placed successfully',
+            orderId: order._id,
+            order
+        });
+    } catch (error) {
+        console.error("Order create error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Get user's order history
+app.get('/api/orders', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: "Database not connected" });
+        }
+
+        const orders = await Order.find({ userId: req.user.id })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.status(200).json(orders);
+    } catch (error) {
+        console.error("Orders fetch error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Get single order details
+app.get('/api/orders/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: "Database not connected" });
+        }
+
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid order ID' });
+        }
+
+        const order = await Order.findOne({ _id: id, userId: req.user.id }).lean();
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        res.status(200).json(order);
+    } catch (error) {
+        console.error("Order fetch error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Razorpay Payment Routes
+
+// Create Razorpay order
+app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
+    try {
+        if (!razorpayInstance) {
+            return res.status(503).json({ message: 'Razorpay not configured' });
+        }
+
+        const { amount } = req.body;
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'Valid amount required' });
+        }
+
+        const options = {
+            amount: Math.round(amount * 100), // amount in paise
+            currency: 'INR',
+            receipt: `order_${Date.now()}`
+        };
+
+        const razorpayOrder = await razorpayInstance.orders.create(options);
+        res.status(200).json({
+            orderId: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency
+        });
+    } catch (error) {
+        console.error("Razorpay order error:", error.message);
+        res.status(500).json({ message: "Payment order creation failed" });
+    }
+});
+
+// Verify Razorpay payment signature
+app.post('/api/payment/verify', authenticateToken, async (req, res) => {
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ message: 'Missing payment verification data' });
+        }
+
+        const body = razorpay_order_id + '|' + razorpay_payment_id;
+        const expectedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(body)
+            .digest('hex');
+
+        if (expectedSignature === razorpay_signature) {
+            res.status(200).json({ verified: true });
+        } else {
+            res.status(400).json({ verified: false, message: 'Invalid signature' });
+        }
+    } catch (error) {
+        console.error("Payment verify error:", error.message);
+        res.status(500).json({ message: "Payment verification failed" });
     }
 });
 
