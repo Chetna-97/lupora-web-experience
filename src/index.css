@@ -24,22 +24,8 @@ body {
   font-family: 'serif'; /* Montfort uses elegant serif fonts */
 }
 
-/* This fixes the "Broken" layout by positioning the 3D scene correctly */
-canvas {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  outline: none;
-  z-index: 0;
-}
-
-/* Ensure content sits on top of the 3D animation */
+/* Ensure content sits on top */
 main, section, nav, footer {
   position: relative;
   z-index: 10;
-  pointer-events: none; /* Allows mouse to interact with 3D behind text */
-}
-
-a, button {
-  pointer-events: auto; /* Re-enables clicking for buttons */
 }

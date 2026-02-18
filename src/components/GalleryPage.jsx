@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { ShoppingBag } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 function ProductSkeleton() {
   return (
@@ -17,6 +20,24 @@ function ProductSkeleton() {
 export default function GalleryPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [addedId, setAddedId] = useState(null);
+  const { addToCart } = useCart();
+  const { isAuthenticated, setShowAuthModal } = useAuth();
+
+  const handleAddToCart = async (productId) => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+    try {
+      setAddedId(productId);
+      await addToCart(productId);
+      setTimeout(() => setAddedId(null), 1500);
+    } catch (err) {
+      console.error('Add to cart failed:', err);
+      setAddedId(null);
+    }
+  };
 
   useEffect(() => {
     const getProducts = async () => {
@@ -98,22 +119,20 @@ export default function GalleryPage() {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   className="relative group"
                 >
-                  <div className="overflow-hidden aspect-[3/4] bg-neutral-900 relative">
-                    <motion.img
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
+                  <Link to={`/product/${product._id || product.id}`} className="block overflow-hidden aspect-[3/4] bg-neutral-900 relative cursor-pointer">
+                    <img
                       src={`/lupora-web-experience${product.image}`}
                       alt={product.name}
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700"
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                      <button className="px-8 py-3 border border-white text-white text-[10px] tracking-widest uppercase hover:bg-white hover:text-black transition-all">
+                      <span className="px-8 py-3 border border-white text-white text-[10px] tracking-widest uppercase">
                         View Details
-                      </button>
+                      </span>
                     </div>
-                  </div>
+                  </Link>
 
                   <div className="mt-6">
                     <p className="text-[#C5A059] text-[9px] uppercase tracking-[0.3em] mb-2">
@@ -122,6 +141,24 @@ export default function GalleryPage() {
                     <h3 className="text-white text-xl font-serif tracking-tight">
                       {product.name}
                     </h3>
+                    {product.price && (
+                      <p className="text-gray-400 text-sm mt-2 tracking-wider">
+                        &#8377;{product.price.toLocaleString('en-IN')}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => handleAddToCart(product._id)}
+                      className="mt-4 flex items-center gap-2 px-6 py-3 border border-white/20 text-white text-[10px] tracking-widest uppercase hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-500"
+                    >
+                      {addedId === product._id ? (
+                        'Added to Cart'
+                      ) : (
+                        <>
+                          <ShoppingBag size={14} strokeWidth={1.5} />
+                          Add to Cart
+                        </>
+                      )}
+                    </button>
                   </div>
                 </motion.div>
               ))

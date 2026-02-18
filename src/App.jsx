@@ -1,9 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import AuthModal from './components/AuthModal';
 import Navbar from "./components/Navbar.jsx";
 import Hero from "./components/Hero.jsx";
 import Features from './components/Features';
 import Gallery from './components/Gallery';
 import GalleryPage from './components/GalleryPage';
+import CartPage from './components/CartPage';
+import ProductDetailPage from './components/ProductDetailPage';
 import Footer from "./components/Footer.jsx";
 
 function HomePage() {
@@ -45,12 +50,19 @@ function HomePage() {
 
 function App() {
   return (
-    <Router basename="/lupora-web-experience">
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/gallery" element={<GalleryPage />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <CartProvider>
+        <Router basename="/lupora-web-experience">
+          <AuthModal />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<CartPage />} />
+          </Routes>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 
