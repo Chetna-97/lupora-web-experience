@@ -12,6 +12,11 @@ import ProductDetailPage from './components/ProductDetailPage';
 import CheckoutPage from './components/CheckoutPage';
 import OrderConfirmationPage from './components/OrderConfirmationPage';
 import OrdersPage from './components/OrdersPage';
+import EssencePage from './components/EssencePage';
+import PrivacyPage from './components/PrivacyPage';
+import ProfilePage from './components/ProfilePage';
+import ShippingPage from './components/ShippingPage';
+import NotFoundPage from './components/NotFoundPage';
 import Footer from "./components/Footer.jsx";
 
 function HomePage() {
@@ -62,6 +67,11 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
             <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/essence" element={<EssencePage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/shipping" element={<ShippingPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <Footer />
         </Router>

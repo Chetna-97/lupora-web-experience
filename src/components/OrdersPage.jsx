@@ -146,7 +146,7 @@ export default function OrdersPage() {
                           <div className="space-y-3 mb-6">
                             {order.items.map((item, i) => (
                               <div key={i} className="flex gap-3 items-center">
-                                <div className="w-10 h-12 bg-neutral-900 overflow-hidden flex-shrink-0">
+                                <div className="w-10 h-12 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-md border border-white/5">
                                   <img
                                     src={`/lupora-web-experience${item.image}`}
                                     alt={item.name}

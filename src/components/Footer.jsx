@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function Footer() {
   return (
     <footer className="bg-[#050505] text-white py-20 px-12 border-t border-white/5">
@@ -7,8 +9,7 @@ export default function Footer() {
           <p className="text-gray-500 text-sm leading-relaxed uppercase tracking-widest">Natural botanicals. Eternal elegance.</p>
         </div>
         <div className="flex flex-col space-y-4 text-[10px] tracking-widest uppercase text-gray-400">
-          <a href="#" className="hover:text-white">Shipping</a>
-          <a href="#" className="hover:text-white">Privacy</a>
+          <Link to="/privacy" className="hover:text-white">Privacy</Link>
           <a href="https://www.instagram.com/lupora_perfumes/" className="text-[#C5A059]">@lupora_perfumes</a>
         </div>
       </div>

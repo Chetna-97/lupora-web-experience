@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
 
     const value = {
         user,
+        setUser,
         token,
         loading,
         isAuthenticated: !!user,

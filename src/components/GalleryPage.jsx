@@ -104,7 +104,7 @@ export default function GalleryPage() {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   className="relative group"
                 >
-                  <Link to={`/product/${product._id || product.id}`} className="block overflow-hidden aspect-[3/4] bg-neutral-900 relative cursor-pointer">
+                  <Link to={`/product/${product._id || product.id}`} className="block overflow-hidden aspect-[3/4] bg-neutral-900 relative cursor-pointer rounded-2xl border border-white/5 hover:border-[#C5A059]/30 transition-all duration-700 shadow-lg shadow-black/40">
                     <img
                       src={`/lupora-web-experience${product.image}`}
                       alt={product.name}
@@ -112,8 +112,8 @@ export default function GalleryPage() {
                       decoding="async"
                       className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                     />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                      <span className="px-8 py-3 border border-white text-white text-[10px] tracking-widest uppercase">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center pb-8 rounded-2xl">
+                      <span className="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/30 text-white text-[10px] tracking-widest uppercase rounded-full">
                         View Details
                       </span>
                     </div>
@@ -133,7 +133,7 @@ export default function GalleryPage() {
                     )}
                     <button
                       onClick={() => handleAddToCart(product._id)}
-                      className="mt-4 flex items-center gap-2 px-6 py-3 border border-white/20 text-white text-[10px] tracking-widest uppercase hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-500"
+                      className="mt-4 flex items-center gap-2 px-6 py-3 border border-white/20 text-white text-[10px] tracking-widest uppercase rounded-full hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-500"
                     >
                       {addedId === product._id ? (
                         'Added to Cart'

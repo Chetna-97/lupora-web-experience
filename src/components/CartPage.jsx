@@ -93,7 +93,7 @@ export default function CartPage() {
                                         className="flex gap-6 md:gap-10 py-8 border-b border-white/10"
                                     >
                                         {/* Product Image */}
-                                        <div className="w-24 md:w-32 aspect-[3/4] bg-neutral-900 overflow-hidden flex-shrink-0">
+                                        <div className="w-24 md:w-32 aspect-[3/4] bg-neutral-900 overflow-hidden flex-shrink-0 rounded-xl border border-white/5">
                                             <img
                                                 src={`/lupora-web-experience${item.image}`}
                                                 alt={item.name}

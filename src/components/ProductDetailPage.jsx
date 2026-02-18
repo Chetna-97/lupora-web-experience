@@ -95,7 +95,7 @@ export default function ProductDetailPage() {
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8 }}
-                className="aspect-[3/4] bg-neutral-900 overflow-hidden"
+                className="aspect-[3/4] bg-neutral-900 overflow-hidden rounded-2xl border border-white/5 shadow-2xl shadow-black/50"
               >
                 <img
                   src={`/lupora-web-experience${product.image}`}
@@ -133,7 +133,7 @@ export default function ProductDetailPage() {
                   <span className="text-gray-500 text-[9px] tracking-[0.3em] uppercase">
                     Quantity
                   </span>
-                  <div className="flex items-center gap-4 border border-white/20 px-3 py-2">
+                  <div className="flex items-center gap-4 border border-white/20 px-3 py-2 rounded-full">
                     <button
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
@@ -156,7 +156,7 @@ export default function ProductDetailPage() {
                 {/* Add to Cart Button */}
                 <button
                   onClick={handleAddToCart}
-                  className="flex items-center justify-center gap-3 px-10 py-4 bg-[#C5A059] text-black text-[10px] tracking-[0.3em] uppercase font-medium hover:bg-[#d4af6a] transition-all duration-500 w-fit"
+                  className="flex items-center justify-center gap-3 px-10 py-4 bg-[#C5A059] text-black text-[10px] tracking-[0.3em] uppercase font-medium rounded-full hover:bg-[#d4af6a] transition-all duration-500 w-fit"
                 >
                   {added ? (
                     'Added to Cart'

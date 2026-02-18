@@ -315,7 +315,7 @@ export default function CheckoutPage() {
                     <div className="space-y-4 mb-6">
                       {items.map((item) => (
                         <div key={item.productId} className="flex gap-4">
-                          <div className="w-16 h-20 bg-neutral-900 overflow-hidden flex-shrink-0">
+                          <div className="w-16 h-20 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-lg border border-white/5">
                             <img
                               src={`/lupora-web-experience${item.image}`}
                               alt={item.name}

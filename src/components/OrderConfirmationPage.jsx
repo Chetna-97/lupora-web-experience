@@ -84,7 +84,7 @@ export default function OrderConfirmationPage() {
                   <div className="space-y-4">
                     {order.items.map((item, i) => (
                       <div key={i} className="flex gap-4 items-center">
-                        <div className="w-14 h-18 bg-neutral-900 overflow-hidden flex-shrink-0">
+                        <div className="w-14 h-18 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-lg border border-white/5">
                           <img
                             src={`/lupora-web-experience${item.image}`}
                             alt={item.name}
