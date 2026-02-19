@@ -8,7 +8,7 @@ import { cartFetch, assetUrl } from '../utils/api';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, totalPrice, loading, refreshCart } = useCart();
+  const { items, totalPrice, loading } = useCart();
   const { isAuthenticated, user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -24,13 +24,21 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (isAuthenticated) refreshCart();
-  }, [isAuthenticated, refreshCart]);
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) navigate('/cart');
   }, [isAuthenticated, navigate]);
+
+  // Reset form when user changes (handles user switch)
+  useEffect(() => {
+    if (!user) return;
+    setForm({ fullName: '', phone: '', address: '', city: '', state: '', pincode: '' });
+    setPaymentMethod('cod');
+    setError('');
+    setSubmitting(false);
+  }, [user?.id]);
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));

@@ -34,7 +34,7 @@ function cartReducer(state, action) {
 
 export function CartProvider({ children }) {
     const [state, dispatch] = useReducer(cartReducer, initialState);
-    const { isAuthenticated, loading: authLoading } = useAuth();
+    const { isAuthenticated, user, loading: authLoading } = useAuth();
 
     const fetchCart = useCallback(async () => {
         if (!isAuthenticated) return;
@@ -48,7 +48,7 @@ export function CartProvider({ children }) {
         }
     }, [isAuthenticated]);
 
-    // Fetch cart when auth state changes
+    // Fetch cart when auth state or user changes (handles user switch)
     useEffect(() => {
         if (authLoading) return;
         if (isAuthenticated) {
@@ -56,7 +56,7 @@ export function CartProvider({ children }) {
         } else {
             dispatch({ type: 'CLEAR_CART' });
         }
-    }, [isAuthenticated, authLoading, fetchCart]);
+    }, [isAuthenticated, authLoading, fetchCart, user?.id]);
 
     const addToCart = useCallback(async (productId, quantity = 1) => {
         const data = await cartFetch('/api/cart/add', {

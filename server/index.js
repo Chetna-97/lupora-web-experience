@@ -228,8 +228,10 @@ async function sendOrderEmails(order) {
                 to: ownerEmail,
                 subject: `New Order #${orderId} — Lupora Perfumes`,
                 text: `NEW ORDER RECEIVED\n\n` +
-                      `Order ID: ${order._id}\n` +
+                      `Order ID: #${orderId}\n` +
+                      `Customer: ${addr.fullName}\n` +
                       `Customer Email: ${order.customerEmail || 'Not provided'}\n` +
+                      `Customer Phone: ${addr.phone}\n` +
                       `Date: ${new Date(order.createdAt).toLocaleString('en-IN')}\n` +
                       `Payment: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay (Online)'}\n` +
                       `Payment Status: ${order.paymentStatus}\n\n` +
@@ -247,14 +249,19 @@ async function sendOrderEmails(order) {
         }
     }
 
-    // 2. Confirmation email to customer
-    if (order.customerEmail) {
+    // 2. Confirmation email to customer (via owner email as BCC workaround for free plan)
+    // Note: Resend free plan with onboarding@resend.dev can only send to the account owner's email.
+    // To send directly to customers, verify a custom domain at https://resend.com/domains
+    if (order.customerEmail && ownerEmail) {
         try {
             await resend.emails.send({
                 from: 'Lupora Perfumes <onboarding@resend.dev>',
-                to: order.customerEmail,
-                subject: `Thank you for your order! #${orderId}`,
-                text: `Dear ${addr.fullName},\n\n` +
+                to: ownerEmail,
+                subject: `[Forward to Customer] Thank you for your order! #${orderId}`,
+                text: `⚠️ FORWARD THIS EMAIL TO: ${order.customerEmail}\n` +
+                      `(Resend free plan cannot send directly to customers)\n\n` +
+                      `--- Customer Email Below ---\n\n` +
+                      `Dear ${addr.fullName},\n\n` +
                       `Thank you for shopping with Lupora Perfumes!\n\n` +
                       `Your order has been placed successfully.\n\n` +
                       `ORDER DETAILS\n` +
@@ -271,7 +278,7 @@ async function sendOrderEmails(order) {
                       `Team Lupora\n` +
                       `www.instagram.com/lupora_perfumes\n`
             });
-            console.log('📧 Customer confirmation email sent');
+            console.log(`📧 Customer confirmation sent to owner for forwarding to ${order.customerEmail}`);
         } catch (err) {
             console.error('📧 Customer email failed:', err.message);
         }
