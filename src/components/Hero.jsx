@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { assetUrl } from '../utils/api';
 
 export default function Hero() {
   const [heroVideo, setHeroVideo] = useState(null);
@@ -34,7 +35,7 @@ export default function Hero() {
             preload="auto"
             className="w-full h-full object-cover opacity-60 scale-105"
           >
-            <source src={`/lupora-web-experience${heroVideo.url}`} type="video/mp4" />
+            <source src={assetUrl(heroVideo.url)} type="video/mp4" />
           </video>
         )}
         {/* Luxury Vignette Overlay */}
@@ -73,7 +74,7 @@ export default function Hero() {
         </motion.p>
 
         <motion.button
-          whileHover={{ scale: 1.05, backgroundColor: "white", color: "black" }}
+          whileHover={{ scale: 1.05, backgroundColor: "#ffffff", color: "#000000" }}
           className="mt-12 px-12 py-4 border border-white/20 text-white text-[9px] tracking-[0.5em] uppercase transition-all duration-700"
         >
           Discover the Collection

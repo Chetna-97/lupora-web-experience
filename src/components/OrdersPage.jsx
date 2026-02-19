@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { cartFetch } from '../utils/api';
+import { cartFetch, assetUrl } from '../utils/api';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -148,7 +148,7 @@ export default function OrdersPage() {
                               <div key={i} className="flex gap-3 items-center">
                                 <div className="w-10 h-12 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-md border border-white/5">
                                   <img
-                                    src={`/lupora-web-experience${item.image}`}
+                                    src={assetUrl(item.image)}
                                     alt={item.name}
                                     className="w-full h-full object-cover"
                                   />

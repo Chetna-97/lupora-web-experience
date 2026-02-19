@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { assetUrl } from '../utils/api';
 
 function CartItemSkeleton() {
     return (
@@ -95,7 +96,7 @@ export default function CartPage() {
                                         {/* Product Image */}
                                         <div className="w-24 md:w-32 aspect-[3/4] bg-neutral-900 overflow-hidden flex-shrink-0 rounded-xl border border-white/5">
                                             <img
-                                                src={`/lupora-web-experience${item.image}`}
+                                                src={assetUrl(item.image)}
                                                 alt={item.name}
                                                 className="w-full h-full object-cover"
                                             />

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
-import { cartFetch } from '../utils/api';
+import { cartFetch, assetUrl } from '../utils/api';
 
 export default function OrderConfirmationPage() {
   const { orderId } = useParams();
@@ -86,7 +86,7 @@ export default function OrderConfirmationPage() {
                       <div key={i} className="flex gap-4 items-center">
                         <div className="w-14 h-18 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-lg border border-white/5">
                           <img
-                            src={`/lupora-web-experience${item.image}`}
+                            src={assetUrl(item.image)}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />

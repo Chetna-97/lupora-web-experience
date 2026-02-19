@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { assetUrl } from '../utils/api';
 
 function DetailSkeleton() {
   return (
@@ -98,7 +99,7 @@ export default function ProductDetailPage() {
                 className="aspect-[3/4] bg-neutral-900 overflow-hidden rounded-2xl border border-white/5 shadow-2xl shadow-black/50"
               >
                 <img
-                  src={`/lupora-web-experience${product.image}`}
+                  src={assetUrl(product.image)}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />

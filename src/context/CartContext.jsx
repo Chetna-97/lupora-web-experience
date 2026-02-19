@@ -64,8 +64,9 @@ export function CartProvider({ children }) {
             body: JSON.stringify({ productId, quantity }),
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
+        await fetchCart();
         return data;
-    }, []);
+    }, [fetchCart]);
 
     const updateQuantity = useCallback(async (productId, quantity) => {
         const data = await cartFetch('/api/cart/update', {

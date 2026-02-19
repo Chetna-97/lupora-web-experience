@@ -114,8 +114,8 @@ export default function PrivacyPage() {
                   @lupora_perfumes
                 </a>{' '}
                 or email us at{' '}
-                <a href="mailto:chetanavakharia@gmail.com" className="text-[#C5A059] hover:underline">
-                  chetanavakharia@gmail.com
+                <a href="mailto:chetnavakhari@gmail.com" className="text-[#C5A059] hover:underline">
+                  chetnavakhari@gmail.com
                 </a>.
               </p>
             </div>

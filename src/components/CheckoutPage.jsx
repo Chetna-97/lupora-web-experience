@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { cartFetch } from '../utils/api';
+import { cartFetch, assetUrl } from '../utils/api';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -15,7 +15,6 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [form, setForm] = useState({
     fullName: '',
-    email: '',
     phone: '',
     address: '',
     city: '',
@@ -57,7 +56,6 @@ export default function CheckoutPage() {
       method: 'POST',
       body: JSON.stringify({
         shippingAddress: form,
-        customerEmail: form.email,
         paymentMethod,
         ...paymentData
       })
@@ -70,8 +68,8 @@ export default function CheckoutPage() {
     setError('');
 
     // Validate all fields
-    const { fullName, email, phone, address, city, state, pincode } = form;
-    if (!fullName || !email || !phone || !address || !city || !state || !pincode) {
+    const { fullName, phone, address, city, state, pincode } = form;
+    if (!fullName || !phone || !address || !city || !state || !pincode) {
       setError('Please fill in all shipping details');
       return;
     }
@@ -208,20 +206,16 @@ export default function CheckoutPage() {
                   className="lg:col-span-3"
                 >
                   <h2 className="text-white text-lg tracking-[0.2em] uppercase mb-8">Shipping Details</h2>
+                  {/* Show logged-in user email */}
+                  <p className="text-gray-400 text-sm mb-6">
+                    Order confirmation will be sent to <span className="text-[#C5A059]">{user?.email}</span>
+                  </p>
                   <div className="space-y-5">
                     <input
                       type="text"
                       name="fullName"
                       placeholder="Full Name"
                       value={form.fullName}
-                      onChange={handleChange}
-                      className={inputClass}
-                    />
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Email Address"
-                      value={form.email}
                       onChange={handleChange}
                       className={inputClass}
                     />
@@ -317,7 +311,7 @@ export default function CheckoutPage() {
                         <div key={item.productId} className="flex gap-4">
                           <div className="w-16 h-20 bg-neutral-900 overflow-hidden flex-shrink-0 rounded-lg border border-white/5">
                             <img
-                              src={`/lupora-web-experience${item.image}`}
+                              src={assetUrl(item.image)}
                               alt={item.name}
                               className="w-full h-full object-cover"
                             />

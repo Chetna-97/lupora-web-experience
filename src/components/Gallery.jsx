@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Check, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { assetUrl } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
 function ProductSkeleton({ offset }) {
@@ -20,9 +21,19 @@ function ProductSkeleton({ offset }) {
 export default function Gallery({ limit }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [addedId, setAddedId] = useState(null);
-  const { addToCart } = useCart();
+  const [quantities, setQuantities] = useState({});
+  const { addToCart, items: cartItems } = useCart();
   const { isAuthenticated, setShowAuthModal } = useAuth();
+
+  const getQuantity = (productId) => quantities[productId] || 1;
+
+  const updateQty = (productId, delta) => {
+    setQuantities(prev => {
+      const current = prev[productId] || 1;
+      const next = Math.max(1, current + delta);
+      return { ...prev, [productId]: next };
+    });
+  };
 
   const handleAddToCart = async (productId) => {
     if (!isAuthenticated) {
@@ -30,12 +41,10 @@ export default function Gallery({ limit }) {
       return;
     }
     try {
-      setAddedId(productId);
-      await addToCart(productId);
-      setTimeout(() => setAddedId(null), 1500);
+      await addToCart(productId, getQuantity(productId));
+      setQuantities(prev => { const n = { ...prev }; delete n[productId]; return n; });
     } catch (err) {
       console.error('Add to cart failed:', err);
-      setAddedId(null);
     }
   };
 
@@ -90,7 +99,7 @@ export default function Gallery({ limit }) {
             >
               <Link to={`/product/${product._id || product.id}`} className="block overflow-hidden aspect-[3/4] bg-neutral-900 relative cursor-pointer rounded-2xl border border-white/5 hover:border-[#C5A059]/30 transition-all duration-700 shadow-lg shadow-black/40">
                 <img
-                  src={`/lupora-web-experience${product.image}`}
+                  src={assetUrl(product.image)}
                   alt={product.name}
                   loading="lazy"
                   decoding="async"
@@ -115,19 +124,43 @@ export default function Gallery({ limit }) {
                     &#8377;{product.price.toLocaleString('en-IN')}
                   </p>
                 )}
-                <button
-                  onClick={() => handleAddToCart(product._id)}
-                  className="mt-4 flex items-center gap-2 px-6 py-3 border border-white/20 text-white text-[10px] tracking-widest uppercase rounded-full hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-500"
-                >
-                  {addedId === product._id ? (
-                    'Added to Cart'
-                  ) : (
-                    <>
-                      <ShoppingBag size={14} strokeWidth={1.5} />
-                      Add to Cart
-                    </>
-                  )}
-                </button>
+                {cartItems.some(ci => ci.productId === product._id) ? (
+                  <Link
+                    to="/cart"
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#C5A059] text-xs tracking-wide rounded-full hover:bg-[#C5A059]/20 transition-all duration-300"
+                  >
+                    <Check size={13} strokeWidth={2.5} />
+                    In Cart
+                  </Link>
+                ) : (
+                  <div className="mt-4 flex items-center gap-2">
+                    <div className="flex items-center border border-white/15 rounded-full">
+                      <button
+                        onClick={() => updateQty(product._id, -1)}
+                        disabled={getQuantity(product._id) <= 1}
+                        className="px-2.5 py-2 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
+                      >
+                        <Minus size={11} />
+                      </button>
+                      <span className="text-white text-xs w-6 text-center">
+                        {getQuantity(product._id)}
+                      </span>
+                      <button
+                        onClick={() => updateQty(product._id, 1)}
+                        className="px-2.5 py-2 text-gray-500 hover:text-white transition-colors"
+                      >
+                        <Plus size={11} />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => handleAddToCart(product._id)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 border border-white/15 text-white text-xs tracking-wide rounded-full hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-300"
+                    >
+                      <ShoppingBag size={13} strokeWidth={1.5} />
+                      Add
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           )) : (

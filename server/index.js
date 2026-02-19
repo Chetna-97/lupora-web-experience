@@ -3,23 +3,74 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
 
 const app = express();
 
-// Middleware
-app.use(compression()); // gzip responses — reduces payload size significantly
+// ── Security Middleware ──────────────────────────────────
+
+// Helmet: sets secure HTTP headers (XSS, clickjack, MIME sniffing protection)
+app.use(helmet());
+
+// CORS: restrict to known origins only
 app.use(cors({
     origin: ['http://localhost:5173', 'https://chetna-97.github.io'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-app.use(express.json());
+
+// Body parser with size limit (prevents large payload DoS)
+app.use(express.json({ limit: '1mb' }));
+
+// NoSQL injection protection (Express 5 makes req.query read-only, so sanitize body/params manually)
+app.use((req, res, next) => {
+    const sanitize = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        for (const key of Object.keys(obj)) {
+            if (key.startsWith('$') || key.includes('.')) {
+                delete obj[key];
+            } else if (typeof obj[key] === 'object') {
+                sanitize(obj[key]);
+            }
+        }
+    };
+    sanitize(req.body);
+    sanitize(req.params);
+    next();
+});
+
+// Gzip compression
+app.use(compression());
+
+// Rate limiters
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 15, // 15 attempts per window
+    message: { message: 'Too many attempts, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 100, // 100 requests per minute
+    message: { message: 'Too many requests, please slow down' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Apply rate limits
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/payment', authLimiter);
+app.use('/api', apiLimiter);
 
 // 1. Connection String - uses .env locally, or Environment Variables on GitHub/Hosting
 const mongoURI=process.env.MONGO_URI;
@@ -132,24 +183,38 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
     });
 }
 
+// Resend email client
+let resendClient = null;
+
+function getResend() {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        console.log('⚠️ RESEND_API_KEY is missing — emails disabled');
+        return null;
+    }
+    if (!resendClient) {
+        resendClient = new Resend(apiKey);
+    }
+    return resendClient;
+}
+
+// Verify email config on startup
+async function verifyEmailConfig() {
+    const resend = getResend();
+    if (!resend) return;
+    console.log('📧 Resend configured — emails enabled!');
+    console.log(`   OWNER_EMAIL: ${process.env.OWNER_EMAIL || '❌ not set'}`);
+}
+
 // Email helper — sends order notification to shop owner + confirmation to customer
 async function sendOrderEmails(order) {
     const ownerEmail = process.env.OWNER_EMAIL;
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
+    const resend = getResend();
 
-    if (!emailUser || !emailPass) {
-        console.log('⚠️ Email not configured, skipping notifications');
-        return;
-    }
-
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: emailUser, pass: emailPass }
-    });
+    if (!resend) return;
 
     const itemsList = order.items.map(item =>
-        `  • ${item.name} x${item.quantity} — ₹${(item.price * item.quantity).toLocaleString('en-IN')}`
+        `  - ${item.name} x${item.quantity} — Rs.${(item.price * item.quantity).toLocaleString('en-IN')}`
     ).join('\n');
 
     const addr = order.shippingAddress;
@@ -158,19 +223,18 @@ async function sendOrderEmails(order) {
     // 1. Email to shop owner
     if (ownerEmail) {
         try {
-            await transporter.sendMail({
-                from: emailUser,
+            await resend.emails.send({
+                from: 'Lupora Orders <onboarding@resend.dev>',
                 to: ownerEmail,
-                subject: `🛒 New Order #${orderId} — Lupora Perfumes`,
-                text: `NEW ORDER RECEIVED\n` +
-                      `──────────────────\n\n` +
+                subject: `New Order #${orderId} — Lupora Perfumes`,
+                text: `NEW ORDER RECEIVED\n\n` +
                       `Order ID: ${order._id}\n` +
                       `Customer Email: ${order.customerEmail || 'Not provided'}\n` +
                       `Date: ${new Date(order.createdAt).toLocaleString('en-IN')}\n` +
                       `Payment: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay (Online)'}\n` +
                       `Payment Status: ${order.paymentStatus}\n\n` +
                       `ITEMS:\n${itemsList}\n\n` +
-                      `Total: ₹${order.totalAmount.toLocaleString('en-IN')}\n\n` +
+                      `Total: Rs.${order.totalAmount.toLocaleString('en-IN')}\n\n` +
                       `SHIP TO:\n` +
                       `  ${addr.fullName}\n` +
                       `  ${addr.phone}\n` +
@@ -186,26 +250,25 @@ async function sendOrderEmails(order) {
     // 2. Confirmation email to customer
     if (order.customerEmail) {
         try {
-            await transporter.sendMail({
-                from: `"Lupora Perfumes" <${emailUser}>`,
+            await resend.emails.send({
+                from: 'Lupora Perfumes <onboarding@resend.dev>',
                 to: order.customerEmail,
                 subject: `Thank you for your order! #${orderId}`,
                 text: `Dear ${addr.fullName},\n\n` +
-                      `Thank you for shopping with Lupora Perfumes! ✨\n\n` +
+                      `Thank you for shopping with Lupora Perfumes!\n\n` +
                       `Your order has been placed successfully.\n\n` +
                       `ORDER DETAILS\n` +
-                      `─────────────\n` +
                       `Order ID: #${orderId}\n` +
                       `Date: ${new Date(order.createdAt).toLocaleString('en-IN')}\n\n` +
                       `ITEMS:\n${itemsList}\n\n` +
-                      `Total: ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
+                      `Total: Rs.${order.totalAmount.toLocaleString('en-IN')}\n` +
                       `Payment: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}\n\n` +
                       `SHIPPING TO:\n` +
                       `  ${addr.address}\n` +
                       `  ${addr.city}, ${addr.state} — ${addr.pincode}\n\n` +
                       `We will notify you when your order is shipped.\n\n` +
                       `With love,\n` +
-                      `Team Lupora 🌿\n` +
+                      `Team Lupora\n` +
                       `www.instagram.com/lupora_perfumes\n`
             });
             console.log('📧 Customer confirmation email sent');
@@ -228,6 +291,26 @@ function isCacheValid() {
 // 4. API Routes
 // Health check route
 app.get('/', (req, res) => res.send("Lupora Server is Running..."));
+
+// Test email route — send a test email to verify Resend is working
+app.get('/api/test-email', async (req, res) => {
+    const resend = getResend();
+    if (!resend) {
+        return res.status(500).json({ message: 'Email not configured. Set RESEND_API_KEY in .env' });
+    }
+    try {
+        await resend.emails.send({
+            from: 'Lupora Perfumes <onboarding@resend.dev>',
+            to: process.env.OWNER_EMAIL,
+            subject: 'Lupora Email Test — Working!',
+            text: 'This is a test email from your Lupora server.\n\nIf you received this, your email configuration is correct!\n\n— Lupora Server'
+        });
+        res.json({ message: `✅ Test email sent to ${process.env.OWNER_EMAIL}` });
+    } catch (err) {
+        console.error('❌ Test email failed:', err.message);
+        res.status(500).json({ message: `Email failed: ${err.message}` });
+    }
+});
 
 // Fetch products route — with in-memory cache
 app.get('/api/products', async (req, res) => {
@@ -326,6 +409,10 @@ function authenticateToken(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Validate token payload has required fields
+        if (!decoded.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+            return res.status(403).json({ message: 'Invalid token payload' });
+        }
         req.user = decoded;
         next();
     } catch (err) {
@@ -346,8 +433,15 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ message: 'Name, email, and password are required' });
         }
 
-        if (password.length < 6) {
-            return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        // Input length & format validation
+        if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 50) {
+            return res.status(400).json({ message: 'Name must be 2-50 characters' });
+        }
+        if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+        }
+        if (typeof password !== 'string' || password.length < 6 || password.length > 128) {
+            return res.status(400).json({ message: 'Password must be 6-128 characters' });
         }
 
         const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -355,8 +449,8 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(409).json({ message: 'Email already registered' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ name, email: email.toLowerCase(), password: hashedPassword });
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const user = new User({ name: name.trim(), email: email.toLowerCase(), password: hashedPassword });
         await user.save();
 
         const token = jwt.sign({ id: user._id, name: user.name, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -475,8 +569,8 @@ app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Both current and new password are required' });
         }
 
-        if (newPassword.length < 6) {
-            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        if (typeof newPassword !== 'string' || newPassword.length < 6 || newPassword.length > 128) {
+            return res.status(400).json({ message: 'New password must be 6-128 characters' });
         }
 
         const user = await User.findById(req.user.id);
@@ -489,7 +583,7 @@ app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
             return res.status(401).json({ message: 'Current password is incorrect' });
         }
 
-        user.password = await bcrypt.hash(newPassword, 10);
+        user.password = await bcrypt.hash(newPassword, 12);
         await user.save();
 
         res.status(200).json({ message: 'Password changed successfully' });
@@ -679,7 +773,7 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
-        const { shippingAddress, customerEmail, paymentMethod, razorpayPaymentId, razorpayOrderId } = req.body;
+        const { shippingAddress, paymentMethod, razorpayPaymentId, razorpayOrderId } = req.body;
 
         if (!shippingAddress || !paymentMethod) {
             return res.status(400).json({ message: 'Shipping address and payment method required' });
@@ -689,6 +783,10 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
         if (!fullName || !phone || !address || !city || !state || !pincode) {
             return res.status(400).json({ message: 'All shipping address fields are required' });
         }
+
+        // Get customer email from their account
+        const orderUser = await User.findById(req.user.id).select('email').lean();
+        const customerEmail = orderUser?.email || null;
 
         // Fetch user's cart with product details
         const cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId');
@@ -729,6 +827,7 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
         await Cart.findOneAndDelete({ userId: req.user.id });
 
         // Send email notifications (non-blocking)
+        console.log(`📦 Order #${order._id.toString().slice(-8).toUpperCase()} placed — customer email: ${order.customerEmail || 'none'}`);
         sendOrderEmails(order);
 
         res.status(201).json({
@@ -846,6 +945,7 @@ app.post('/api/payment/verify', authenticateToken, async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    verifyEmailConfig();
 
     // Keep-alive: ping self every 14 minutes to prevent Render free tier from sleeping
     const RENDER_URL = process.env.RENDER_URL;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { assetUrl } from '../utils/api';
 
 export default function Features() {
   const [featuredProduct, setFeaturedProduct] = useState(null);
@@ -49,7 +50,7 @@ export default function Features() {
         >
           {featuredProduct && (
             <img
-              src={`/lupora-web-experience${featuredProduct.image}`}
+              src={assetUrl(featuredProduct.image)}
               alt={featuredProduct.name}
               className="w-full h-full object-cover"
             />
