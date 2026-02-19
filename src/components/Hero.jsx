@@ -16,7 +16,7 @@ export default function Hero() {
           setHeroVideo(video);
         }
       } catch (err) {
-        console.error("❌ Frontend Fetch Error:", err.message);
+        console.error("Failed to fetch media:", err.message);
       }
     };
     getHeroVideo();

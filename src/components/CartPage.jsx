@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 function CartItemSkeleton() {
     return (
@@ -19,6 +20,7 @@ function CartItemSkeleton() {
 }
 
 export default function CartPage() {
+    usePageTitle('Cart');
     const { items, totalItems, totalPrice, loading, updateQuantity, removeFromCart, clearCart, refreshCart } = useCart();
     useEffect(() => {
         window.scrollTo(0, 0);

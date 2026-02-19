@@ -1,30 +1,18 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-
-/* Add this for the smooth scrolling Mont-Fort feel */
 html {
   scroll-behavior: smooth;
-}
-
-body {
-  background-color: #000;
-  color: #fff;
-  margin: 0;
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  background-color: black;
-  color: white;
-  font-family: 'serif'; /* Montfort uses elegant serif fonts */
+  background-color: #000;
+  color: #fff;
+  font-family: 'Playfair Display', serif;
 }
 
-/* Ensure content sits on top */
 main, section, nav, footer {
   position: relative;
   z-index: 10;

@@ -4,8 +4,10 @@ import { motion } from 'framer-motion';
 import { User, Save, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cartFetch } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function ProfilePage() {
+  usePageTitle('My Profile');
   const { user, isAuthenticated, setUser } = useAuth();
   const navigate = useNavigate();
 

@@ -5,6 +5,7 @@ import { ShoppingBag, Check, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 function ProductSkeleton() {
   return (
@@ -19,6 +20,7 @@ function ProductSkeleton() {
 }
 
 export default function GalleryPage() {
+  usePageTitle('Collection');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState({});
@@ -56,7 +58,7 @@ export default function GalleryPage() {
         const data = await response.json();
         setProducts(data);
       } catch (err) {
-        console.error("❌ Frontend Fetch Error:", err.message);
+        console.error("Failed to fetch products:", err.message);
       } finally {
         setLoading(false);
       }

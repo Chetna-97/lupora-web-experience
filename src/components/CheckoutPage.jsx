@@ -5,8 +5,10 @@ import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { cartFetch, assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function CheckoutPage() {
+  usePageTitle('Checkout');
   const navigate = useNavigate();
   const { items, totalPrice, loading } = useCart();
   const { isAuthenticated, user } = useAuth();

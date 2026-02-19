@@ -15,7 +15,7 @@ export default function Features() {
           setFeaturedProduct(data[0]);
         }
       } catch (err) {
-        console.error("❌ Frontend Fetch Error:", err.message);
+        console.error("Failed to fetch media:", err.message);
       }
     };
     getFeaturedProduct();

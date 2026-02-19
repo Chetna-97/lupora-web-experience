@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Package, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cartFetch, assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function OrdersPage() {
+  usePageTitle('My Orders');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);

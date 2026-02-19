@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function EssencePage() {
+  usePageTitle('Our Essence');
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

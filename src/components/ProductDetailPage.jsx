@@ -5,6 +5,7 @@ import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 function DetailSkeleton() {
   return (
@@ -33,6 +34,7 @@ export default function ProductDetailPage() {
   const [added, setAdded] = useState(false);
   const { addToCart } = useCart();
   const { isAuthenticated, setShowAuthModal } = useAuth();
+  usePageTitle(product?.name || 'Product');
 
   useEffect(() => {
     window.scrollTo(0, 0);

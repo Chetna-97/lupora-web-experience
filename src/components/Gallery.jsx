@@ -56,7 +56,7 @@ export default function Gallery({ limit }) {
         const data = await response.json();
         setProducts(data);
       } catch (err) {
-        console.error("❌ Frontend Fetch Error:", err.message);
+        console.error("Failed to fetch products:", err.message);
       } finally {
         setLoading(false);
       }

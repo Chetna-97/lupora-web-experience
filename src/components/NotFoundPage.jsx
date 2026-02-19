@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function NotFoundPage() {
+  usePageTitle('Page Not Found');
   return (
     <div className="min-h-screen bg-black pt-24 flex items-center justify-center px-6">
       <div className="text-center">

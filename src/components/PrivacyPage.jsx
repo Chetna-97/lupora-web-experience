@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function PrivacyPage() {
+  usePageTitle('Privacy Policy');
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

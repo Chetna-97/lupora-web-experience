@@ -3,8 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
 import { cartFetch, assetUrl } from '../utils/api';
+import usePageTitle from '../utils/usePageTitle';
 
 export default function OrderConfirmationPage() {
+  usePageTitle('Order Confirmed');
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);

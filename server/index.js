@@ -101,10 +101,10 @@ mongoose.connect(mongoURI, {
 
 // 3. Define Schema & Model
 const productSchema = new mongoose.Schema({
-    name: String,
-    category: String,
+    name: { type: String, required: true },
+    category: { type: String, required: true },
     image: String,
-    price: Number,
+    price: { type: Number, required: true, min: 0 },
     description: String
 }, { collection: 'products' });
 
@@ -299,11 +299,11 @@ function isCacheValid() {
 // Health check route
 app.get('/', (req, res) => res.send("Lupora Server is Running..."));
 
-// Test email route — send a test email to verify Resend is working
-app.get('/api/test-email', async (req, res) => {
+// Test email route — protected, owner only
+app.get('/api/test-email', authenticateToken, async (req, res) => {
     const resend = getResend();
     if (!resend) {
-        return res.status(500).json({ message: 'Email not configured. Set RESEND_API_KEY in .env' });
+        return res.status(500).json({ message: 'Email not configured' });
     }
     try {
         await resend.emails.send({
@@ -312,10 +312,10 @@ app.get('/api/test-email', async (req, res) => {
             subject: 'Lupora Email Test — Working!',
             text: 'This is a test email from your Lupora server.\n\nIf you received this, your email configuration is correct!\n\n— Lupora Server'
         });
-        res.json({ message: `✅ Test email sent to ${process.env.OWNER_EMAIL}` });
+        res.json({ message: 'Test email sent successfully' });
     } catch (err) {
-        console.error('❌ Test email failed:', err.message);
-        res.status(500).json({ message: `Email failed: ${err.message}` });
+        console.error('Test email failed:', err.message);
+        res.status(500).json({ message: 'Email sending failed' });
     }
 });
 
@@ -345,9 +345,8 @@ app.get('/api/products', async (req, res) => {
         res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(products);
     } catch (error) {
-        console.error("🔥 API Error:", error.message);
-        console.error("Full error:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
+        console.error("Products fetch error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
@@ -645,10 +644,15 @@ app.post('/api/cart/add', authenticateToken, async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
-        const { productId, quantity = 1 } = req.body;
+        const { productId, quantity: rawQty } = req.body;
+        const quantity = Number(rawQty) || 1;
 
         if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
             return res.status(400).json({ message: 'Valid Product ID required' });
+        }
+
+        if (quantity < 1 || quantity > 99 || !Number.isInteger(quantity)) {
+            return res.status(400).json({ message: 'Quantity must be between 1 and 99' });
         }
 
         const product = await Product.findById(productId).lean();
@@ -789,6 +793,14 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
         const { fullName, phone, address, city, state, pincode } = shippingAddress;
         if (!fullName || !phone || !address || !city || !state || !pincode) {
             return res.status(400).json({ message: 'All shipping address fields are required' });
+        }
+
+        if (!/^\d{10}$/.test(phone)) {
+            return res.status(400).json({ message: 'Phone number must be 10 digits' });
+        }
+
+        if (!/^\d{6}$/.test(pincode)) {
+            return res.status(400).json({ message: 'Pincode must be 6 digits' });
         }
 
         // Get customer email from their account
@@ -938,6 +950,11 @@ app.post('/api/payment/verify', authenticateToken, async (req, res) => {
             .digest('hex');
 
         if (expectedSignature === razorpay_signature) {
+            // Update order payment status in database
+            await Order.findOneAndUpdate(
+                { razorpayOrderId: razorpay_order_id },
+                { paymentStatus: 'paid', razorpayPaymentId: razorpay_payment_id }
+            );
             res.status(200).json({ verified: true });
         } else {
             res.status(400).json({ verified: false, message: 'Invalid signature' });

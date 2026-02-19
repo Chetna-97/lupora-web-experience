@@ -17,6 +17,7 @@ import PrivacyPage from './components/PrivacyPage';
 import ProfilePage from './components/ProfilePage';
 import ShippingPage from './components/ShippingPage';
 import NotFoundPage from './components/NotFoundPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import Footer from "./components/Footer.jsx";
 
 function HomePage() {
@@ -54,6 +55,7 @@ function HomePage() {
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <CartProvider>
         <Router basename="/lupora-web-experience">
@@ -77,6 +79,7 @@ function App() {
         </Router>
       </CartProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
