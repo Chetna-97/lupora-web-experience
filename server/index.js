@@ -66,19 +66,40 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+const orderLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 10, // 10 orders per 5 minutes per IP
+    message: { message: 'Too many orders, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Apply rate limits
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/payment', authLimiter);
+app.use('/api/orders', orderLimiter);
 app.use('/api', apiLimiter);
 
-// 1. Connection String - uses .env locally, or Environment Variables on GitHub/Hosting
-const mongoURI=process.env.MONGO_URI;
-
-if (!mongoURI) {
-    console.error("❌ ERROR: MONGO_URI is not defined in environment variables!");
-    process.exit(1);
+// ── Environment Validation ──────────────────────────────────
+function validateEnv() {
+    const required = ['MONGO_URI', 'JWT_SECRET'];
+    const missing = required.filter(key => !process.env[key]);
+    if (missing.length > 0) {
+        console.error(`Missing required env vars: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+    // Warn about optional but recommended vars
+    if (!process.env.RESEND_API_KEY) console.warn('RESEND_API_KEY not set — emails disabled');
+    if (!process.env.OWNER_EMAIL) console.warn('OWNER_EMAIL not set — order notifications disabled');
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        console.warn('Razorpay keys not set — online payments disabled');
+    }
 }
+validateEnv();
+
+// 1. Connection String
+const mongoURI = process.env.MONGO_URI;
 
 // 2. Connect to MongoDB
 let isConnected = false;
@@ -93,10 +114,8 @@ mongoose.connect(mongoURI, {
         isConnected = true;
     })
     .catch(err => {
-        console.error("❌ MongoDB Connection Error:");
-        console.error("Error name:", err.name);
-        console.error("Error message:", err.message);
-        if (err.reason) console.error("Reason:", err.reason);
+        console.error("MongoDB Connection Error:", err.message);
+        process.exit(1);
     });
 
 // 3. Define Schema & Model
@@ -376,7 +395,7 @@ app.get('/api/media', async (req, res) => {
         res.status(200).json(media);
     } catch (error) {
         console.error("🔥 API Error:", error.message);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
@@ -793,6 +812,20 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
         const { fullName, phone, address, city, state, pincode } = shippingAddress;
         if (!fullName || !phone || !address || !city || !state || !pincode) {
             return res.status(400).json({ message: 'All shipping address fields are required' });
+        }
+
+        // Validate field types and lengths
+        if (typeof fullName !== 'string' || fullName.trim().length < 2 || fullName.trim().length > 100) {
+            return res.status(400).json({ message: 'Full name must be 2-100 characters' });
+        }
+        if (typeof address !== 'string' || address.trim().length < 5 || address.trim().length > 500) {
+            return res.status(400).json({ message: 'Address must be 5-500 characters' });
+        }
+        if (typeof city !== 'string' || city.trim().length < 2 || city.trim().length > 50) {
+            return res.status(400).json({ message: 'City must be 2-50 characters' });
+        }
+        if (typeof state !== 'string' || state.trim().length < 2 || state.trim().length > 50) {
+            return res.status(400).json({ message: 'State must be 2-50 characters' });
         }
 
         if (!/^\d{10}$/.test(phone)) {

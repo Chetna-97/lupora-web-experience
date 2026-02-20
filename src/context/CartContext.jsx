@@ -64,7 +64,7 @@ export function CartProvider({ children }) {
             body: JSON.stringify({ productId, quantity }),
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
-        await fetchCart();
+        fetchCart(); // refresh full cart in background (no await to avoid double-blocking)
         return data;
     }, [fetchCart]);
 
@@ -74,7 +74,7 @@ export function CartProvider({ children }) {
             body: JSON.stringify({ productId, quantity }),
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
-        await fetchCart();
+        fetchCart();
         return data;
     }, [fetchCart]);
 
@@ -83,7 +83,7 @@ export function CartProvider({ children }) {
             method: 'DELETE',
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
-        await fetchCart();
+        fetchCart();
         return data;
     }, [fetchCart]);
 

@@ -124,15 +124,17 @@ export default function CartPage() {
                                                     <button
                                                         onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
                                                         disabled={item.quantity <= 1}
+                                                        aria-label={`Decrease quantity of ${item.name}`}
                                                         className="text-gray-400 hover:text-white disabled:opacity-30 transition-colors p-1"
                                                     >
                                                         <Minus size={14} />
                                                     </button>
-                                                    <span className="text-white text-sm tracking-wider w-6 text-center">
+                                                    <span className="text-white text-sm tracking-wider w-6 text-center" aria-label={`Quantity: ${item.quantity}`}>
                                                         {item.quantity}
                                                     </span>
                                                     <button
                                                         onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                                                        aria-label={`Increase quantity of ${item.name}`}
                                                         className="text-gray-400 hover:text-white transition-colors p-1"
                                                     >
                                                         <Plus size={14} />
@@ -140,6 +142,7 @@ export default function CartPage() {
                                                 </div>
                                                 <button
                                                     onClick={() => removeFromCart(item.productId)}
+                                                    aria-label={`Remove ${item.name} from cart`}
                                                     className="text-gray-600 hover:text-red-400 transition-colors p-2"
                                                 >
                                                     <Trash2 size={16} />

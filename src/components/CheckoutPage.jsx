@@ -227,6 +227,9 @@ export default function CheckoutPage() {
                       placeholder="Full Name"
                       value={form.fullName}
                       onChange={handleChange}
+                      required
+                      minLength={2}
+                      maxLength={100}
                       className={inputClass}
                     />
                     <input
@@ -235,6 +238,10 @@ export default function CheckoutPage() {
                       placeholder="Phone Number"
                       value={form.phone}
                       onChange={handleChange}
+                      required
+                      pattern="\d{10}"
+                      maxLength={10}
+                      title="10 digit phone number"
                       className={inputClass}
                     />
                     <textarea
@@ -242,6 +249,9 @@ export default function CheckoutPage() {
                       placeholder="Street Address"
                       value={form.address}
                       onChange={handleChange}
+                      required
+                      minLength={5}
+                      maxLength={500}
                       rows={3}
                       className={inputClass + " resize-none"}
                     />
@@ -252,6 +262,9 @@ export default function CheckoutPage() {
                         placeholder="City"
                         value={form.city}
                         onChange={handleChange}
+                        required
+                        minLength={2}
+                        maxLength={50}
                         className={inputClass}
                       />
                       <input
@@ -260,6 +273,9 @@ export default function CheckoutPage() {
                         placeholder="State"
                         value={form.state}
                         onChange={handleChange}
+                        required
+                        minLength={2}
+                        maxLength={50}
                         className={inputClass}
                       />
                       <input
@@ -268,6 +284,10 @@ export default function CheckoutPage() {
                         placeholder="Pincode"
                         value={form.pincode}
                         onChange={handleChange}
+                        required
+                        pattern="\d{6}"
+                        maxLength={6}
+                        title="6 digit pincode"
                         className={inputClass}
                       />
                     </div>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Check, Minus, Plus } from 'lucide-react';
+import { Check, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { assetUrl } from '../utils/api';
@@ -23,30 +23,33 @@ export default function GalleryPage() {
   usePageTitle('Collection');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [quantities, setQuantities] = useState({});
-  const { addToCart, items: cartItems } = useCart();
+  const { addToCart, updateQuantity, removeFromCart, items: cartItems } = useCart();
   const { isAuthenticated, setShowAuthModal } = useAuth();
+  const busyRef = useRef(false);
 
-  const getQuantity = (productId) => quantities[productId] || 1;
-
-  const updateQty = (productId, delta) => {
-    setQuantities(prev => {
-      const current = prev[productId] || 1;
-      const next = Math.max(1, current + delta);
-      return { ...prev, [productId]: next };
-    });
-  };
-
-  const handleAddToCart = async (productId) => {
+  const handleQtyChange = async (productId, currentQty, delta) => {
+    if (busyRef.current) return;
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
+    busyRef.current = true;
+    const newQty = currentQty + delta;
     try {
-      await addToCart(productId, getQuantity(productId));
-      setQuantities(prev => { const n = { ...prev }; delete n[productId]; return n; });
+      const cartItem = cartItems.find(ci => ci.productId === productId);
+      if (cartItem) {
+        if (newQty < 1) {
+          await removeFromCart(productId);
+        } else {
+          await updateQuantity(productId, newQty);
+        }
+      } else {
+        await addToCart(productId, 1);
+      }
     } catch (err) {
-      console.error('Add to cart failed:', err);
+      console.error('Cart update failed:', err);
+    } finally {
+      busyRef.current = false;
     }
   };
 
@@ -142,43 +145,44 @@ export default function GalleryPage() {
                         &#8377;{product.price.toLocaleString('en-IN')}
                       </p>
                     )}
-                    {cartItems.some(ci => ci.productId === product._id) ? (
-                      <Link
-                        to="/cart"
-                        className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#C5A059] text-xs tracking-wide rounded-full hover:bg-[#C5A059]/20 transition-all duration-300"
-                      >
-                        <Check size={13} strokeWidth={2.5} />
-                        In Cart
-                      </Link>
-                    ) : (
-                      <div className="mt-4 flex items-center gap-2">
-                        <div className="flex items-center border border-white/15 rounded-full">
-                          <button
-                            onClick={() => updateQty(product._id, -1)}
-                            disabled={getQuantity(product._id) <= 1}
-                            className="px-2.5 py-2 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
-                          >
-                            <Minus size={11} />
-                          </button>
-                          <span className="text-white text-xs w-6 text-center">
-                            {getQuantity(product._id)}
-                          </span>
-                          <button
-                            onClick={() => updateQty(product._id, 1)}
-                            className="px-2.5 py-2 text-gray-500 hover:text-white transition-colors"
-                          >
-                            <Plus size={11} />
-                          </button>
+                    {(() => {
+                      const cartItem = cartItems.find(ci => ci.productId === product._id);
+                      const inCart = !!cartItem;
+                      const displayQty = inCart ? cartItem.quantity : 1;
+                      return (
+                        <div className="mt-4 flex items-center gap-2">
+                          <div className={`flex items-center border ${inCart ? 'border-[#C5A059]/30' : 'border-white/15'} rounded-full`}>
+                            <button
+                              onClick={() => handleQtyChange(product._id, displayQty, -1)}
+                              disabled={!inCart}
+                              aria-label={`Decrease quantity of ${product.name}`}
+                              className="px-2.5 py-2 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <span className="text-white text-xs w-6 text-center" aria-label={`Quantity: ${displayQty}`}>
+                              {displayQty}
+                            </span>
+                            <button
+                              onClick={() => handleQtyChange(product._id, displayQty, 1)}
+                              aria-label={`Increase quantity of ${product.name}`}
+                              className="px-2.5 py-2 text-gray-500 hover:text-white transition-colors"
+                            >
+                              <Plus size={11} />
+                            </button>
+                          </div>
+                          {inCart && (
+                            <Link
+                              to="/cart"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#C5A059] text-xs tracking-wide rounded-full hover:bg-[#C5A059]/20 transition-all duration-300"
+                            >
+                              <Check size={13} strokeWidth={2.5} />
+                              In Cart
+                            </Link>
+                          )}
                         </div>
-                        <button
-                          onClick={() => handleAddToCart(product._id)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 border border-white/15 text-white text-xs tracking-wide rounded-full hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-300"
-                        >
-                          <ShoppingBag size={13} strokeWidth={1.5} />
-                          Add
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </motion.div>
               ))
