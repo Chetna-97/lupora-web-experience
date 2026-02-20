@@ -193,6 +193,20 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
+// Review Schema
+const reviewSchema = new mongoose.Schema({
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userName: { type: String, required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true, maxlength: 500 }
+}, { collection: 'reviews', timestamps: true });
+
+// One review per user per product
+reviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
+
+const Review = mongoose.model('Review', reviewSchema);
+
 // Razorpay instance (only if keys are configured)
 let razorpayInstance = null;
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
@@ -931,6 +945,76 @@ app.get('/api/orders/:id', authenticateToken, async (req, res) => {
         res.status(200).json(order);
     } catch (error) {
         console.error("Order fetch error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Review Routes
+
+// Get reviews for a product (public)
+app.get('/api/reviews/:productId', async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: "Database not connected" });
+        }
+
+        const { productId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: 'Invalid product ID' });
+        }
+
+        const reviews = await Review.find({ productId }).sort({ createdAt: -1 }).lean();
+        res.status(200).json(reviews);
+    } catch (error) {
+        console.error("Reviews fetch error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Create a review (authenticated, one per user per product)
+app.post('/api/reviews', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: "Database not connected" });
+        }
+
+        const { productId, rating, comment } = req.body;
+
+        if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: 'Valid product ID required' });
+        }
+
+        const ratingNum = Number(rating);
+        if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+            return res.status(400).json({ message: 'Rating must be 1-5' });
+        }
+
+        if (!comment || typeof comment !== 'string' || comment.trim().length < 1 || comment.trim().length > 500) {
+            return res.status(400).json({ message: 'Comment must be 1-500 characters' });
+        }
+
+        // Verify product exists
+        const product = await Product.findById(productId).lean();
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        const review = new Review({
+            productId,
+            userId: req.user.id,
+            userName: req.user.name,
+            rating: ratingNum,
+            comment: comment.trim()
+        });
+
+        await review.save();
+        res.status(201).json(review);
+    } catch (error) {
+        // Handle duplicate review (compound unique index)
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'You have already reviewed this product' });
+        }
+        console.error("Review create error:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });

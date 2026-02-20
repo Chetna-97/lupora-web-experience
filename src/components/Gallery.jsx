@@ -130,7 +130,7 @@ export default function Gallery({ limit }) {
                 {(() => {
                   const cartItem = cartItems.find(ci => ci.productId === product._id);
                   const inCart = !!cartItem;
-                  const displayQty = inCart ? cartItem.quantity : 1;
+                  const displayQty = inCart ? cartItem.quantity : 0;
                   return (
                     <div className="mt-4 flex items-center gap-2">
                       <div className={`flex items-center border ${inCart ? 'border-[#C5A059]/30' : 'border-white/15'} rounded-full`}>
