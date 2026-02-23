@@ -1,5 +1,75 @@
 @import "tailwindcss";
 
+/* ── Theme Variables ── */
+:root {
+  --th-surface: #000000;
+  --th-surface-alt: #0a0a0a;
+  --th-surface-raised: #0d0d0d;
+  --th-surface-sunken: #050505;
+  --th-fg: #ffffff;
+  --th-fg-2: #d1d5db;
+  --th-fg-3: #9ca3af;
+  --th-fg-4: #6b7280;
+  --th-fg-5: #4b5563;
+  --th-fg-6: #374151;
+  --th-accent: #C5A059;
+  --th-accent-hover: #d4af6a;
+  --th-inverse: #ffffff;
+  --th-inverse-fg: #000000;
+  --th-inverse-subtle: #4b5563;
+}
+
+[data-theme="light"] {
+  --th-surface: #ffffff;
+  --th-surface-alt: #f5f5f5;
+  --th-surface-raised: #ffffff;
+  --th-surface-sunken: #f3f4f6;
+  --th-fg: #111827;
+  --th-fg-2: #374151;
+  --th-fg-3: #4b5563;
+  --th-fg-4: #6b7280;
+  --th-fg-5: #9ca3af;
+  --th-fg-6: #d1d5db;
+  --th-accent: #b8933e;
+  --th-accent-hover: #a6832f;
+  --th-inverse: #111827;
+  --th-inverse-fg: #ffffff;
+  --th-inverse-subtle: #9ca3af;
+}
+
+/* ── Register as Tailwind color tokens ── */
+@theme {
+  --color-surface: var(--th-surface);
+  --color-surface-alt: var(--th-surface-alt);
+  --color-surface-raised: var(--th-surface-raised);
+  --color-surface-sunken: var(--th-surface-sunken);
+  --color-foreground: var(--th-fg);
+  --color-foreground-2: var(--th-fg-2);
+  --color-muted: var(--th-fg-3);
+  --color-subtle: var(--th-fg-4);
+  --color-faint: var(--th-fg-5);
+  --color-dim: var(--th-fg-6);
+  --color-accent: var(--th-accent);
+  --color-accent-hover: var(--th-accent-hover);
+  --color-inverse: var(--th-inverse);
+  --color-inverse-fg: var(--th-inverse-fg);
+  --color-inverse-subtle: var(--th-inverse-subtle);
+}
+
+/* ── Smooth theme transitions ── */
+*,
+*::before,
+*::after {
+  transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Disable transitions for animations and transforms */
+[style*="transform"],
+.animate-spin {
+  transition: none !important;
+}
+
+/* ── Base Styles ── */
 html {
   scroll-behavior: smooth;
 }
@@ -8,8 +78,8 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  background-color: #000;
-  color: #fff;
+  background-color: var(--th-surface);
+  color: var(--th-fg);
   font-family: 'Playfair Display', serif;
 }
 

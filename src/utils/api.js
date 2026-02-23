@@ -24,7 +24,9 @@ export async function cartFetch(endpoint, options = {}) {
         headers,
     });
     if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        let message = `API error: ${response.status}`;
+        try { const d = await response.json(); if (d.message) message = d.message; } catch {}
+        throw new Error(message);
     }
     return response.json();
 }

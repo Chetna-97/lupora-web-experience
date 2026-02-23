@@ -22,7 +22,7 @@ export default function Features() {
   }, []);
 
   return (
-    <section className="py-32 px-10 bg-white text-black">
+    <section className="py-32 px-10 bg-inverse text-inverse-fg">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
         <motion.div
           initial={{ opacity: 0, x: -50 }}
@@ -31,20 +31,20 @@ export default function Features() {
           className="space-y-6"
         >
           <h2 className="text-5xl font-serif italic">The Signature Scent</h2>
-          <p className="text-gray-600 leading-loose">
+          <p className="text-inverse-subtle leading-loose">
             Lupora is more than a fragrance; it is a whispered secret. Each bottle
             is a blend of hand-picked ingredients sourced from the world's
             most hidden gardens.
           </p>
           <div className="pt-4">
-            <a href="https://www.instagram.com/lupora_perfumes/" className="border-b-2 border-black pb-1 font-bold hover:text-[#C5A059] transition-colors">
+            <a href="https://www.instagram.com/lupora_perfumes/" className="border-b-2 border-current pb-1 font-bold hover:text-accent transition-colors">
               VIEW THE COLLECTION
             </a>
           </div>
         </motion.div>
 
         <motion.div
-          className="relative h-[600px] bg-[#f4f4f4] overflow-hidden rounded-sm"
+          className="relative h-[600px] bg-surface-alt overflow-hidden rounded-sm"
           whileHover={{ scale: 0.98 }}
           transition={{ duration: 0.5 }}
         >

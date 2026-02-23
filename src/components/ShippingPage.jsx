@@ -9,11 +9,11 @@ export default function ShippingPage() {
   }, []);
 
   const sectionClass = "mb-12";
-  const headingClass = "text-white text-xl font-serif italic mb-4";
-  const textClass = "text-gray-400 text-sm leading-loose";
+  const headingClass = "text-foreground text-xl font-serif italic mb-4";
+  const textClass = "text-muted text-sm leading-loose";
 
   return (
-    <div className="min-h-screen bg-black pt-24">
+    <div className="min-h-screen bg-surface pt-24">
       <section className="py-20 px-6 md:px-12">
         <div className="max-w-3xl mx-auto">
           {/* Title */}
@@ -21,7 +21,7 @@ export default function ShippingPage() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-[#C5A059] uppercase tracking-[0.5em] text-[10px] mb-4"
+              className="text-accent uppercase tracking-[0.5em] text-[10px] mb-4"
             >
               Policies
             </motion.p>
@@ -29,11 +29,11 @@ export default function ShippingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-white text-4xl md:text-5xl font-serif italic mb-4"
+              className="text-foreground text-4xl md:text-5xl font-serif italic mb-4"
             >
               Shipping & Returns
             </motion.h1>
-            <p className="text-gray-500 text-[11px] tracking-widest uppercase">
+            <p className="text-subtle text-[11px] tracking-widest uppercase">
               Last updated: February 2026
             </p>
           </div>
@@ -98,12 +98,12 @@ export default function ShippingPage() {
                   href="https://www.instagram.com/lupora_perfumes/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#C5A059] hover:underline"
+                  className="text-accent hover:underline"
                 >
                   @lupora_perfumes
                 </a>{' '}
                 or email us at{' '}
-                <a href="mailto:chetnavakhari@gmail.com" className="text-[#C5A059] hover:underline">
+                <a href="mailto:chetnavakhari@gmail.com" className="text-accent hover:underline">
                   chetnavakhari@gmail.com
                 </a>.
               </p>

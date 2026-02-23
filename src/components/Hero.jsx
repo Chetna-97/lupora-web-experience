@@ -23,7 +23,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
+    <div className="relative w-full h-screen bg-surface overflow-hidden">
       {/* 1. The Video Background - Fetched from Database */}
       <div className="absolute inset-0 z-0">
         {heroVideo && (
@@ -38,11 +38,11 @@ export default function Hero() {
             <source src={assetUrl(heroVideo.url)} type="video/mp4" />
           </video>
         )}
-        {/* Luxury Vignette Overlay */}
+        {/* Luxury Vignette Overlay — stays dark for readability over video */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
       </div>
 
-      {/* 2. Content Overlay (Mont-Fort Style) */}
+      {/* 2. Content Overlay */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
         <motion.div
           initial={{ opacity: 0, letterSpacing: "0.2em" }}
@@ -50,7 +50,7 @@ export default function Hero() {
           transition={{ duration: 2, ease: "easeOut" }}
           className="mb-4"
         >
-          <span className="text-[#C5A059] uppercase text-[10px] font-light">
+          <span className="text-accent uppercase text-[10px] font-light">
             Botanical Alchemy
           </span>
         </motion.div>

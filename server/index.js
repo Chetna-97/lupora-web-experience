@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
+const multer = require('multer');
 
 const app = express();
 
@@ -77,6 +78,8 @@ const orderLimiter = rateLimit({
 // Apply rate limits
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/payment', authLimiter);
 app.use('/api/orders', orderLimiter);
 app.use('/api', apiLimiter);
@@ -124,6 +127,8 @@ const productSchema = new mongoose.Schema({
     category: { type: String, required: true },
     image: String,
     price: { type: Number, required: true, min: 0 },
+    originalPrice: { type: Number, min: 0, default: null },
+    stock: { type: Number, default: -1 },
     description: String
 }, { collection: 'products' });
 
@@ -138,11 +143,27 @@ const mediaSchema = new mongoose.Schema({
 
 const Media = mongoose.model('Media', mediaSchema);
 
+// Address sub-schema
+const addressSchema = new mongoose.Schema({
+    label: { type: String, default: 'Home' },
+    fullName: { type: String, required: true, maxlength: 100 },
+    address: { type: String, required: true, maxlength: 500 },
+    city: { type: String, required: true, maxlength: 50 },
+    state: { type: String, required: true, maxlength: 50 },
+    pincode: { type: String, required: true, maxlength: 10 },
+    isDefault: { type: Boolean, default: false }
+}, { _id: true });
+
 // User Schema
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true }
+    password: { type: String, required: true },
+    phone: { type: String, default: '' },
+    profilePicture: { type: String, default: '' },
+    addresses: { type: [addressSchema], default: [] },
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null }
 }, { collection: 'users', timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -206,6 +227,13 @@ const reviewSchema = new mongoose.Schema({
 reviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
 
 const Review = mongoose.model('Review', reviewSchema);
+
+// Newsletter Schema
+const newsletterSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true }
+}, { collection: 'newsletter', timestamps: true });
+
+const Newsletter = mongoose.model('Newsletter', newsletterSchema);
 
 // Razorpay instance (only if keys are configured)
 let razorpayInstance = null;
@@ -413,6 +441,28 @@ app.get('/api/media', async (req, res) => {
     }
 });
 
+// Search products
+app.get('/api/products/search', async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: 'Database not connected' });
+        }
+        const q = String(req.query.q || '').trim();
+        if (!q || q.length < 1) return res.status(200).json([]);
+        if (q.length > 100) return res.status(400).json({ message: 'Query too long' });
+
+        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escaped, 'i');
+        const results = await Product.find({
+            $or: [{ name: regex }, { category: regex }]
+        }).limit(8).lean();
+        res.status(200).json(results);
+    } catch (error) {
+        console.error('Search error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // Fetch single product by ID
 app.get('/api/products/:id', async (req, res) => {
     try {
@@ -496,7 +546,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         res.status(201).json({
             token,
-            user: { id: user._id, name: user.name, email: user.email }
+            user: { id: user._id, name: user.name, email: user.email, phone: '', profilePicture: '', addresses: [] }
         });
     } catch (error) {
         console.error("Register error:", error.message);
@@ -530,7 +580,11 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.status(200).json({
             token,
-            user: { id: user._id, name: user.name, email: user.email }
+            user: {
+                id: user._id, name: user.name, email: user.email,
+                phone: user.phone || '', profilePicture: user.profilePicture || '',
+                addresses: user.addresses || []
+            }
         });
     } catch (error) {
         console.error("Login error:", error.message);
@@ -549,36 +603,53 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.status(200).json({ id: user._id, name: user.name, email: user.email });
+        res.status(200).json({
+            id: user._id, name: user.name, email: user.email,
+            phone: user.phone || '', profilePicture: user.profilePicture || '',
+            addresses: user.addresses || []
+        });
     } catch (error) {
         console.error("Auth me error:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
-// Update user profile (name)
+// Update user profile
 app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     try {
         if (!isConnected) {
             return res.status(503).json({ message: "Database not connected" });
         }
 
-        const { name } = req.body;
+        const { name, phone, profilePicture } = req.body;
         if (!name || !name.trim()) {
             return res.status(400).json({ message: 'Name is required' });
         }
 
+        const updates = { name: name.trim() };
+        if (phone !== undefined) {
+            if (phone && (typeof phone !== 'string' || phone.length > 15)) {
+                return res.status(400).json({ message: 'Invalid phone number' });
+            }
+            updates.phone = phone || '';
+        }
+        if (profilePicture !== undefined) {
+            if (profilePicture && typeof profilePicture !== 'string') {
+                return res.status(400).json({ message: 'Invalid profile picture' });
+            }
+            updates.profilePicture = profilePicture || '';
+        }
+
         const user = await User.findByIdAndUpdate(
             req.user.id,
-            { name: name.trim() },
+            updates,
             { new: true }
-        ).select('-password');
+        ).select('-password -resetToken -resetTokenExpiry');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Issue new token with updated name
         const token = jwt.sign(
             { id: user._id, name: user.name, email: user.email },
             process.env.JWT_SECRET,
@@ -587,11 +658,60 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
 
         res.status(200).json({
             token,
-            user: { id: user._id, name: user.name, email: user.email }
+            user: {
+                id: user._id, name: user.name, email: user.email,
+                phone: user.phone || '', profilePicture: user.profilePicture || '',
+                addresses: user.addresses || []
+            }
         });
     } catch (error) {
         console.error("Profile update error:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Upload profile picture
+const avatarUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+    fileFilter: (req, file, cb) => {
+        if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
+        }
+    }
+});
+
+app.post('/api/auth/upload-avatar', authenticateToken, (req, res, next) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ message: 'Image must be under 2MB' });
+            }
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!isConnected) return res.status(503).json({ message: 'Database not connected' });
+        if (!req.file) return res.status(400).json({ message: 'No image uploaded' });
+
+        const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { profilePicture: base64 },
+            { new: true }
+        ).select('-password -resetToken -resetTokenExpiry');
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        res.status(200).json({ profilePicture: user.profilePicture });
+    } catch (error) {
+        console.error('Avatar upload error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
@@ -632,6 +752,199 @@ app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
     }
 });
 
+// Add address
+app.post('/api/auth/addresses', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) return res.status(503).json({ message: 'Database not connected' });
+        const { label, fullName, address, city, state, pincode, isDefault } = req.body;
+        if (!fullName || !address || !city || !state || !pincode) {
+            return res.status(400).json({ message: 'All address fields are required' });
+        }
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (isDefault) {
+            user.addresses.forEach(a => { a.isDefault = false; });
+        }
+        user.addresses.push({
+            label: label || 'Home', fullName: fullName.trim(),
+            address: address.trim(), city: city.trim(), state: state.trim(),
+            pincode: pincode.trim(), isDefault: isDefault || user.addresses.length === 0
+        });
+        await user.save();
+        res.status(201).json({ addresses: user.addresses });
+    } catch (error) {
+        console.error('Add address error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Update address
+app.put('/api/auth/addresses/:addressId', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) return res.status(503).json({ message: 'Database not connected' });
+        const { label, fullName, address, city, state, pincode, isDefault } = req.body;
+        if (!fullName || !address || !city || !state || !pincode) {
+            return res.status(400).json({ message: 'All address fields are required' });
+        }
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const addr = user.addresses.id(req.params.addressId);
+        if (!addr) return res.status(404).json({ message: 'Address not found' });
+
+        if (isDefault) {
+            user.addresses.forEach(a => { a.isDefault = false; });
+        }
+        Object.assign(addr, {
+            label: label || addr.label, fullName: fullName.trim(),
+            address: address.trim(), city: city.trim(), state: state.trim(),
+            pincode: pincode.trim(), isDefault: isDefault !== undefined ? isDefault : addr.isDefault
+        });
+        await user.save();
+        res.status(200).json({ addresses: user.addresses });
+    } catch (error) {
+        console.error('Update address error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Delete address
+app.delete('/api/auth/addresses/:addressId', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) return res.status(503).json({ message: 'Database not connected' });
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const addr = user.addresses.id(req.params.addressId);
+        if (!addr) return res.status(404).json({ message: 'Address not found' });
+
+        const wasDefault = addr.isDefault;
+        addr.deleteOne();
+        if (wasDefault && user.addresses.length > 0) {
+            user.addresses[0].isDefault = true;
+        }
+        await user.save();
+        res.status(200).json({ addresses: user.addresses });
+    } catch (error) {
+        console.error('Delete address error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Delete account
+app.delete('/api/auth/account', authenticateToken, async (req, res) => {
+    try {
+        if (!isConnected) return res.status(503).json({ message: 'Database not connected' });
+        const { password } = req.body;
+        if (!password) return res.status(400).json({ message: 'Password is required to delete account' });
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ message: 'Incorrect password' });
+
+        // Clean up user data
+        await Cart.deleteMany({ userId: req.user.id });
+        await Review.deleteMany({ userId: req.user.id });
+        await User.findByIdAndDelete(req.user.id);
+
+        res.status(200).json({ message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Delete account error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Forgot password — send reset link
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: 'Database not connected' });
+        }
+        const { email } = req.body;
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        // Always return success to prevent email enumeration
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(200).json({ message: 'If that email exists, a reset link has been sent' });
+        }
+
+        // Generate token
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+        user.resetToken = hashedToken;
+        user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await user.save();
+
+        // Build reset URL
+        const frontendUrl = process.env.FRONTEND_URL || 'https://chetna-97.github.io/lupora-web-experience';
+        const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
+
+        // Send email
+        const resend = getResend();
+        if (resend) {
+            const ownerEmail = process.env.OWNER_EMAIL;
+            await resend.emails.send({
+                from: 'Lupora <onboarding@resend.dev>',
+                to: ownerEmail || user.email,
+                subject: 'Password Reset — Lupora Perfumes',
+                text: ownerEmail
+                    ? `FORWARD THIS TO: ${user.email}\n\nHi ${user.name},\n\nYou requested a password reset. Click the link below to set a new password:\n\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you did not request this, please ignore this email.\n\n— Lupora Perfumes`
+                    : `Hi ${user.name},\n\nYou requested a password reset. Click the link below to set a new password:\n\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you did not request this, please ignore this email.\n\n— Lupora Perfumes`
+            });
+        }
+
+        res.status(200).json({ message: 'If that email exists, a reset link has been sent' });
+    } catch (error) {
+        console.error('Forgot password error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// Reset password — verify token and set new password
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: 'Database not connected' });
+        }
+        const { token, email, newPassword } = req.body;
+        if (!token || !email || !newPassword) {
+            return res.status(400).json({ message: 'Token, email, and new password are required' });
+        }
+        if (typeof newPassword !== 'string' || newPassword.length < 6 || newPassword.length > 128) {
+            return res.status(400).json({ message: 'Password must be 6-128 characters' });
+        }
+
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await User.findOne({
+            email: email.toLowerCase(),
+            resetToken: hashedToken,
+            resetTokenExpiry: { $gt: new Date() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired reset link' });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 12);
+        user.resetToken = null;
+        user.resetTokenExpiry = null;
+        await user.save();
+
+        res.status(200).json({ message: 'Password reset successfully' });
+    } catch (error) {
+        console.error('Reset password error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // Fetch cart (authenticated)
 app.get('/api/cart', authenticateToken, async (req, res) => {
     try {
@@ -659,6 +972,7 @@ app.get('/api/cart', authenticateToken, async (req, res) => {
                 category: item.productId.category,
                 image: item.productId.image,
                 price: item.productId.price,
+                originalPrice: item.productId.originalPrice || null,
                 quantity: item.quantity
             })),
             totalItems,
@@ -691,6 +1005,9 @@ app.post('/api/cart/add', authenticateToken, async (req, res) => {
         const product = await Product.findById(productId).lean();
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
+        }
+        if (product.stock === 0) {
+            return res.status(400).json({ message: 'This product is sold out' });
         }
 
         let cart = await Cart.findOne({ userId: req.user.id });
@@ -1016,6 +1333,30 @@ app.post('/api/reviews', authenticateToken, async (req, res) => {
         }
         console.error("Review create error:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// Newsletter subscribe
+app.post('/api/newsletter/subscribe', async (req, res) => {
+    try {
+        if (!isConnected) {
+            return res.status(503).json({ message: 'Database not connected' });
+        }
+        const { email } = req.body;
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+        }
+        await Newsletter.create({ email });
+        res.status(201).json({ message: 'Subscribed successfully' });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(200).json({ message: 'Subscribed successfully' });
+        }
+        console.error('Newsletter subscribe error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

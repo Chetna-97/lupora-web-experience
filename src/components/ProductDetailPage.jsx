@@ -6,21 +6,22 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { assetUrl, cartFetch } from '../utils/api';
 import usePageTitle from '../utils/usePageTitle';
+import PriceDisplay from './PriceDisplay';
 
 function DetailSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-      <div className="aspect-[3/4] bg-neutral-800 animate-pulse" />
+      <div className="aspect-[3/4] bg-dim animate-pulse" />
       <div className="flex flex-col justify-center py-8">
-        <div className="h-2 w-24 bg-neutral-800 animate-pulse rounded mb-4" />
-        <div className="h-10 w-64 bg-neutral-800 animate-pulse rounded mb-6" />
-        <div className="h-6 w-32 bg-neutral-800 animate-pulse rounded mb-8" />
+        <div className="h-2 w-24 bg-dim animate-pulse rounded mb-4" />
+        <div className="h-10 w-64 bg-dim animate-pulse rounded mb-6" />
+        <div className="h-6 w-32 bg-dim animate-pulse rounded mb-8" />
         <div className="space-y-3 mb-10">
-          <div className="h-3 w-full bg-neutral-800 animate-pulse rounded" />
-          <div className="h-3 w-5/6 bg-neutral-800 animate-pulse rounded" />
-          <div className="h-3 w-4/6 bg-neutral-800 animate-pulse rounded" />
+          <div className="h-3 w-full bg-dim animate-pulse rounded" />
+          <div className="h-3 w-5/6 bg-dim animate-pulse rounded" />
+          <div className="h-3 w-4/6 bg-dim animate-pulse rounded" />
         </div>
-        <div className="h-14 w-48 bg-neutral-800 animate-pulse rounded" />
+        <div className="h-14 w-48 bg-dim animate-pulse rounded" />
       </div>
     </div>
   );
@@ -39,7 +40,7 @@ function StarRating({ rating, size = 16, interactive = false, onChange }) {
         >
           <Star
             size={size}
-            className={star <= rating ? 'text-[#C5A059] fill-[#C5A059]' : 'text-gray-600'}
+            className={star <= rating ? 'text-accent fill-accent' : 'text-faint'}
             strokeWidth={1.5}
           />
         </button>
@@ -117,6 +118,7 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const handleAddToCart = async () => {
+    if (product.stock === 0) return;
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
@@ -132,6 +134,7 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = async () => {
+    if (product.stock === 0) return;
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
@@ -185,7 +188,7 @@ export default function ProductDetailPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-black pt-24">
+    <div className="min-h-screen bg-surface pt-24">
       {/* Product Detail */}
       <section className="py-16 md:py-24 px-6 md:px-12">
         <div className="max-w-6xl mx-auto">
@@ -197,12 +200,12 @@ export default function ProductDetailPage() {
               animate={{ opacity: 1 }}
               className="text-center py-20"
             >
-              <p className="text-gray-500 text-sm tracking-widest uppercase mb-8">
+              <p className="text-subtle text-sm tracking-widest uppercase mb-8">
                 Product not found
               </p>
               <Link
                 to="/gallery"
-                className="px-12 py-4 border border-white/20 text-white text-[9px] tracking-[0.5em] uppercase hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-black transition-all duration-700"
+                className="px-12 py-4 border border-foreground/20 text-foreground text-[9px] tracking-[0.5em] uppercase hover:bg-accent hover:border-accent hover:text-black transition-all duration-700"
               >
                 Explore Collection
               </Link>
@@ -215,13 +218,20 @@ export default function ProductDetailPage() {
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.8 }}
-                  className="aspect-[3/4] bg-neutral-900 overflow-hidden rounded-2xl border border-white/5 shadow-2xl shadow-black/50"
+                  className="aspect-[3/4] bg-dim overflow-hidden rounded-2xl border border-foreground/5 shadow-2xl shadow-black/50 relative"
                 >
                   <img
                     src={assetUrl(product.image)}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
+                  {product.stock === 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-2xl">
+                      <span className="px-8 py-3 border border-white/30 text-white text-[10px] tracking-[0.4em] uppercase backdrop-blur-sm bg-black/30">
+                        Sold Out
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
 
                 {/* Product Info */}
@@ -231,10 +241,10 @@ export default function ProductDetailPage() {
                   transition={{ duration: 0.8, delay: 0.2 }}
                   className="flex flex-col justify-center py-4 lg:py-8"
                 >
-                  <p className="text-[#C5A059] text-[9px] uppercase tracking-[0.5em] mb-4">
+                  <p className="text-accent text-[9px] uppercase tracking-[0.5em] mb-4">
                     {product.category}
                   </p>
-                  <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-serif italic mb-6">
+                  <h1 className="text-foreground text-4xl md:text-5xl lg:text-6xl font-serif italic mb-6">
                     {product.name}
                   </h1>
 
@@ -242,71 +252,79 @@ export default function ProductDetailPage() {
                   {reviews.length > 0 && (
                     <div className="flex items-center gap-3 mb-4">
                       <StarRating rating={Math.round(Number(avgRating))} size={14} />
-                      <span className="text-gray-400 text-xs">{avgRating} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})</span>
+                      <span className="text-muted text-xs">{avgRating} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})</span>
                     </div>
                   )}
 
                   {product.price && (
-                    <p className="text-gray-300 text-2xl font-serif tracking-wider mb-8">
-                      &#8377;{product.price.toLocaleString('en-IN')}
-                    </p>
+                    <div className="mb-8">
+                      <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
+                    </div>
                   )}
                   {product.description && (
-                    <p className="text-gray-400 text-sm leading-loose mb-10 max-w-lg">
+                    <p className="text-muted text-sm leading-loose mb-10 max-w-lg">
                       {product.description}
                     </p>
                   )}
 
-                  {/* Quantity Selector */}
-                  <div className="flex items-center gap-6 mb-8">
-                    <span className="text-gray-500 text-[9px] tracking-[0.3em] uppercase">
-                      Quantity
-                    </span>
-                    <div className="flex items-center gap-4 border border-white/20 px-3 py-2 rounded-full">
-                      <button
-                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                        disabled={quantity <= 1}
-                        aria-label="Decrease quantity"
-                        className="text-gray-400 hover:text-white disabled:opacity-30 transition-colors p-1"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="text-white text-sm tracking-wider w-8 text-center">
-                        {quantity}
-                      </span>
-                      <button
-                        onClick={() => setQuantity(q => q + 1)}
-                        aria-label="Increase quantity"
-                        className="text-gray-400 hover:text-white transition-colors p-1"
-                      >
-                        <Plus size={14} />
-                      </button>
+                  {product.stock === 0 ? (
+                    <div className="flex items-center gap-3 px-10 py-4 bg-dim text-faint text-[10px] tracking-[0.3em] uppercase rounded-full cursor-not-allowed w-fit">
+                      Sold Out
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Quantity Selector */}
+                      <div className="flex items-center gap-6 mb-8">
+                        <span className="text-subtle text-[9px] tracking-[0.3em] uppercase">
+                          Quantity
+                        </span>
+                        <div className="flex items-center gap-4 border border-foreground/20 px-3 py-2 rounded-full">
+                          <button
+                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                            disabled={quantity <= 1}
+                            aria-label="Decrease quantity"
+                            className="text-muted hover:text-foreground disabled:opacity-30 transition-colors p-1"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="text-foreground text-sm tracking-wider w-8 text-center">
+                            {quantity}
+                          </span>
+                          <button
+                            onClick={() => setQuantity(q => q + 1)}
+                            aria-label="Increase quantity"
+                            className="text-muted hover:text-foreground transition-colors p-1"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-4">
-                    <button
-                      onClick={handleAddToCart}
-                      className="flex items-center justify-center gap-3 px-10 py-4 bg-[#C5A059] text-black text-[10px] tracking-[0.3em] uppercase font-medium rounded-full hover:bg-[#d4af6a] transition-all duration-500"
-                    >
-                      {added ? (
-                        'Added to Cart'
-                      ) : (
-                        <>
-                          <ShoppingBag size={16} strokeWidth={1.5} />
-                          Add to Cart
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={handleBuyNow}
-                      className="flex items-center justify-center gap-3 px-10 py-4 border border-[#C5A059] text-[#C5A059] text-[10px] tracking-[0.3em] uppercase font-medium rounded-full hover:bg-[#C5A059] hover:text-black transition-all duration-500"
-                    >
-                      <Zap size={16} strokeWidth={1.5} />
-                      Buy Now
-                    </button>
-                  </div>
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-4">
+                        <button
+                          onClick={handleAddToCart}
+                          className="flex items-center justify-center gap-3 px-10 py-4 bg-accent text-black text-[10px] tracking-[0.3em] uppercase font-medium rounded-full hover:bg-accent-hover transition-all duration-500"
+                        >
+                          {added ? (
+                            'Added to Cart'
+                          ) : (
+                            <>
+                              <ShoppingBag size={16} strokeWidth={1.5} />
+                              Add to Cart
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleBuyNow}
+                          className="flex items-center justify-center gap-3 px-10 py-4 border border-accent text-accent text-[10px] tracking-[0.3em] uppercase font-medium rounded-full hover:bg-accent hover:text-black transition-all duration-500"
+                        >
+                          <Zap size={16} strokeWidth={1.5} />
+                          Buy Now
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </div>
 
@@ -315,26 +333,26 @@ export default function ProductDetailPage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-24 border-t border-white/10 pt-16"
+                className="mt-24 border-t border-foreground/10 pt-16"
               >
-                <h2 className="text-white text-2xl md:text-3xl font-serif italic mb-2">Customer Reviews</h2>
+                <h2 className="text-foreground text-2xl md:text-3xl font-serif italic mb-2">Customer Reviews</h2>
                 {reviews.length > 0 && (
                   <div className="flex items-center gap-3 mb-8">
                     <StarRating rating={Math.round(Number(avgRating))} size={18} />
-                    <span className="text-white text-lg font-serif">{avgRating}</span>
-                    <span className="text-gray-500 text-sm">based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
+                    <span className="text-foreground text-lg font-serif">{avgRating}</span>
+                    <span className="text-subtle text-sm">based on {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
                   </div>
                 )}
                 {reviews.length === 0 && (
-                  <p className="text-gray-500 text-sm mb-8">No reviews yet. Be the first to review this product.</p>
+                  <p className="text-subtle text-sm mb-8">No reviews yet. Be the first to review this product.</p>
                 )}
 
                 {/* Review Form */}
                 {isAuthenticated && !userAlreadyReviewed ? (
-                  <form onSubmit={handleReviewSubmit} className="mb-12 p-6 border border-white/10 rounded-xl max-w-xl">
-                    <h3 className="text-white text-sm tracking-[0.2em] uppercase mb-5">Write a Review</h3>
+                  <form onSubmit={handleReviewSubmit} className="mb-12 p-6 border border-foreground/10 rounded-xl max-w-xl">
+                    <h3 className="text-foreground text-sm tracking-[0.2em] uppercase mb-5">Write a Review</h3>
                     <div className="mb-4">
-                      <p className="text-gray-400 text-xs mb-2">Your Rating</p>
+                      <p className="text-muted text-xs mb-2">Your Rating</p>
                       <StarRating
                         rating={reviewForm.rating}
                         size={24}
@@ -348,24 +366,24 @@ export default function ProductDetailPage() {
                       placeholder="Share your experience with this product..."
                       maxLength={500}
                       rows={4}
-                      className="w-full bg-transparent border border-white/20 text-white px-4 py-3 text-sm tracking-wide focus:border-[#C5A059] focus:outline-none transition-colors placeholder-gray-600 resize-none mb-2"
+                      className="w-full bg-transparent border border-foreground/20 text-foreground px-4 py-3 text-sm tracking-wide focus:border-accent focus:outline-none transition-colors placeholder-faint resize-none mb-2"
                     />
-                    <p className="text-gray-600 text-[10px] mb-4 text-right">{reviewForm.comment.length}/500</p>
+                    <p className="text-faint text-[10px] mb-4 text-right">{reviewForm.comment.length}/500</p>
                     {reviewError && <p className="text-red-400 text-xs mb-3">{reviewError}</p>}
                     {reviewSuccess && <p className="text-green-400 text-xs mb-3">{reviewSuccess}</p>}
                     <button
                       type="submit"
                       disabled={reviewSubmitting}
-                      className="px-8 py-3 bg-[#C5A059] text-black text-[10px] tracking-[0.3em] uppercase font-medium hover:bg-[#d4af6a] transition-all duration-500 disabled:opacity-50"
+                      className="px-8 py-3 bg-accent text-black text-[10px] tracking-[0.3em] uppercase font-medium hover:bg-accent-hover transition-all duration-500 disabled:opacity-50"
                     >
                       {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
                     </button>
                   </form>
                 ) : isAuthenticated && userAlreadyReviewed ? (
-                  <p className="text-gray-500 text-sm mb-12 italic">You have already reviewed this product.</p>
+                  <p className="text-subtle text-sm mb-12 italic">You have already reviewed this product.</p>
                 ) : (
-                  <p className="text-gray-500 text-sm mb-12">
-                    <button onClick={() => setShowAuthModal(true)} className="text-[#C5A059] hover:underline">Sign in</button> to write a review.
+                  <p className="text-subtle text-sm mb-12">
+                    <button onClick={() => setShowAuthModal(true)} className="text-accent hover:underline">Sign in</button> to write a review.
                   </p>
                 )}
 
@@ -373,15 +391,15 @@ export default function ProductDetailPage() {
                 {reviews.length > 0 && (
                   <div className="space-y-6">
                     {reviews.map(review => (
-                      <div key={review._id} className="border-b border-white/5 pb-6">
+                      <div key={review._id} className="border-b border-foreground/5 pb-6">
                         <div className="flex items-center gap-3 mb-2">
                           <StarRating rating={review.rating} size={13} />
-                          <span className="text-white text-sm font-medium">{review.userName}</span>
-                          <span className="text-gray-600 text-xs">
+                          <span className="text-foreground text-sm font-medium">{review.userName}</span>
+                          <span className="text-faint text-xs">
                             {new Date(review.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
                           </span>
                         </div>
-                        <p className="text-gray-300 text-sm leading-relaxed">{review.comment}</p>
+                        <p className="text-foreground-2 text-sm leading-relaxed">{review.comment}</p>
                       </div>
                     ))}
                   </div>
@@ -394,9 +412,9 @@ export default function ProductDetailPage() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.6 }}
-                  className="mt-24 border-t border-white/10 pt-16"
+                  className="mt-24 border-t border-foreground/10 pt-16"
                 >
-                  <h2 className="text-white text-2xl md:text-3xl font-serif italic mb-10">You Might Also Like</h2>
+                  <h2 className="text-foreground text-2xl md:text-3xl font-serif italic mb-10">You Might Also Like</h2>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {relatedProducts.map(p => (
                       <Link
@@ -404,18 +422,25 @@ export default function ProductDetailPage() {
                         to={`/product/${p._id}`}
                         className="group"
                       >
-                        <div className="aspect-[3/4] bg-neutral-900 overflow-hidden rounded-xl border border-white/5 hover:border-[#C5A059]/30 transition-all duration-500 mb-4">
+                        <div className="aspect-[3/4] bg-dim overflow-hidden rounded-xl border border-foreground/5 hover:border-accent/30 transition-all duration-500 mb-4 relative">
                           <img
                             src={assetUrl(p.image)}
                             alt={p.name}
                             loading="lazy"
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                           />
+                          {p.stock === 0 && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
+                              <span className="text-white text-[8px] tracking-[0.3em] uppercase">Sold Out</span>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[#C5A059] text-[8px] uppercase tracking-[0.3em] mb-1">{p.category}</p>
-                        <h3 className="text-white text-sm font-serif group-hover:text-[#C5A059] transition-colors">{p.name}</h3>
+                        <p className="text-accent text-[8px] uppercase tracking-[0.3em] mb-1">{p.category}</p>
+                        <h3 className="text-foreground text-sm font-serif group-hover:text-accent transition-colors">{p.name}</h3>
                         {p.price && (
-                          <p className="text-gray-400 text-xs mt-1">&#8377;{p.price.toLocaleString('en-IN')}</p>
+                          <div className="mt-1">
+                            <PriceDisplay price={p.price} originalPrice={p.originalPrice} showBadge={false} />
+                          </div>
                         )}
                       </Link>
                     ))}
