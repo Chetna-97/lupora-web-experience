@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { assetUrl } from '../utils/api';
 
 export default function Hero() {
@@ -73,12 +74,14 @@ export default function Hero() {
           Signature Fragrances <br/> Inspired by Eternal Nature
         </motion.p>
 
-        <motion.button
-          whileHover={{ scale: 1.05, backgroundColor: "#ffffff", color: "#000000" }}
-          className="mt-12 px-12 py-4 border border-white/20 text-white text-[9px] tracking-[0.5em] uppercase transition-all duration-700"
-        >
-          Discover the Collection
-        </motion.button>
+        <Link to="/gallery">
+          <motion.button
+            whileHover={{ scale: 1.05, backgroundColor: "#ffffff", color: "#000000" }}
+            className="mt-12 px-12 py-4 border border-white/20 text-white text-[9px] tracking-[0.5em] uppercase transition-all duration-700"
+          >
+            Discover the Collection
+          </motion.button>
+        </Link>
       </div>
     </div>
   );

@@ -58,28 +58,29 @@ export function CartProvider({ children }) {
         }
     }, [isAuthenticated, authLoading, fetchCart, user?.id]);
 
-    const addToCart = useCallback(async (productId, quantity = 1) => {
+    const addToCart = useCallback(async (productId, quantity = 1, size = null) => {
         const data = await cartFetch('/api/cart/add', {
             method: 'POST',
-            body: JSON.stringify({ productId, quantity }),
+            body: JSON.stringify({ productId, quantity, size }),
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
         fetchCart(); // refresh full cart in background (no await to avoid double-blocking)
         return data;
     }, [fetchCart]);
 
-    const updateQuantity = useCallback(async (productId, quantity) => {
+    const updateQuantity = useCallback(async (productId, quantity, size = null) => {
         const data = await cartFetch('/api/cart/update', {
             method: 'PUT',
-            body: JSON.stringify({ productId, quantity }),
+            body: JSON.stringify({ productId, quantity, size }),
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });
         fetchCart();
         return data;
     }, [fetchCart]);
 
-    const removeFromCart = useCallback(async (productId) => {
-        const data = await cartFetch(`/api/cart/remove/${productId}`, {
+    const removeFromCart = useCallback(async (productId, size = null) => {
+        const sizeParam = size ? `?size=${encodeURIComponent(size)}` : '';
+        const data = await cartFetch(`/api/cart/remove/${productId}${sizeParam}`, {
             method: 'DELETE',
         });
         dispatch({ type: 'UPDATE_TOTAL', payload: data.totalItems });

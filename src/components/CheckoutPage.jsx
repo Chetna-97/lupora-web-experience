@@ -103,21 +103,6 @@ export default function CheckoutPage() {
     }
   };
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (document.getElementById('razorpay-script')) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.id = 'razorpay-script';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const placeOrder = async (paymentData = {}) => {
     const res = await cartFetch('/api/orders', {
       method: 'POST',
@@ -149,70 +134,8 @@ export default function CheckoutPage() {
     setSubmitting(true);
 
     try {
-      if (paymentMethod === 'cod') {
-        const result = await placeOrder();
-        navigate(`/order-confirmation/${result.orderId}`);
-      } else {
-        // Razorpay flow
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          setError('Failed to load payment gateway. Please try again.');
-          setSubmitting(false);
-          return;
-        }
-
-        const paymentOrder = await cartFetch('/api/payment/create-order', {
-          method: 'POST',
-          body: JSON.stringify({ amount: totalPrice })
-        });
-
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: paymentOrder.amount,
-          currency: paymentOrder.currency,
-          name: 'Lupora Perfumes',
-          description: 'Purchase from Lupora',
-          order_id: paymentOrder.orderId,
-          handler: async (response) => {
-            try {
-              const verification = await cartFetch('/api/payment/verify', {
-                method: 'POST',
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature
-                })
-              });
-
-              if (verification.verified) {
-                const result = await placeOrder({
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id
-                });
-                navigate(`/order-confirmation/${result.orderId}`);
-              } else {
-                setError('Payment verification failed. Please contact support.');
-                setSubmitting(false);
-              }
-            } catch (err) {
-              setError('Payment verification failed. Please contact support.');
-              setSubmitting(false);
-            }
-          },
-          prefill: {
-            name: user?.name || shippingAddress.fullName,
-            email: user?.email || '',
-            contact: shippingAddress.phone
-          },
-          theme: { color: '#C5A059' },
-          modal: {
-            ondismiss: () => setSubmitting(false)
-          }
-        };
-
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      }
+      const result = await placeOrder();
+      navigate(`/order-confirmation/${result.orderId}`);
     } catch (err) {
       console.error('Checkout error:', err);
       setError('Failed to place order. Please try again.');
@@ -538,20 +461,6 @@ export default function CheckoutPage() {
                         <p className="text-subtle text-[11px] mt-1">Pay when your order arrives</p>
                       </div>
                     </label>
-                    <label className={`flex items-center gap-4 p-4 border cursor-pointer transition-all duration-300 ${paymentMethod === 'razorpay' ? 'border-accent bg-accent/5' : 'border-foreground/20 hover:border-foreground/40'}`}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="razorpay"
-                        checked={paymentMethod === 'razorpay'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="accent-accent"
-                      />
-                      <div>
-                        <p className="text-foreground text-sm tracking-wide">Pay Online (Razorpay)</p>
-                        <p className="text-subtle text-[11px] mt-1">UPI, Cards, Net Banking, Wallets</p>
-                      </div>
-                    </label>
                   </div>
                 </motion.div>
 
@@ -566,7 +475,7 @@ export default function CheckoutPage() {
                     <h2 className="text-foreground text-lg tracking-[0.2em] uppercase mb-6">Order Summary</h2>
                     <div className="space-y-4 mb-6">
                       {items.map((item) => (
-                        <div key={item.productId} className="flex gap-4">
+                        <div key={`${item.productId}-${item.size || 'default'}`} className="flex gap-4">
                           <div className="w-16 h-20 bg-dim overflow-hidden flex-shrink-0 rounded-lg border border-foreground/5">
                             <img
                               src={assetUrl(item.image)}
@@ -575,7 +484,7 @@ export default function CheckoutPage() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-foreground text-sm font-serif truncate">{item.name}</p>
+                            <p className="text-foreground text-sm font-serif truncate">{item.name}{item.size && <span className="text-subtle text-[10px] ml-1">({item.size})</span>}</p>
                             <p className="text-subtle text-[11px] mt-1">Qty: {item.quantity}</p>
                           </div>
                           <p className="text-foreground-2 text-sm flex-shrink-0">
@@ -609,7 +518,7 @@ export default function CheckoutPage() {
                       disabled={submitting}
                       className="w-full mt-6 py-4 bg-accent text-black text-[10px] tracking-[0.3em] uppercase font-medium hover:bg-accent-hover transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {submitting ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order' : 'Pay & Place Order'}
+                      {submitting ? 'Processing...' : 'Place Order'}
                     </button>
 
                     <Link

@@ -84,8 +84,8 @@ export default function OrderConfirmationPage() {
                 <div className="mb-8">
                   <p className="text-foreground text-[10px] tracking-[0.3em] uppercase mb-4">Items</p>
                   <div className="space-y-4">
-                    {order.items.map((item, i) => (
-                      <div key={i} className="flex gap-4 items-center">
+                    {order.items.map((item) => (
+                      <div key={`${item.productId}-${item.size || 'default'}`} className="flex gap-4 items-center">
                         <div className="w-14 h-18 bg-dim overflow-hidden flex-shrink-0 rounded-lg border border-foreground/5">
                           <img
                             src={assetUrl(item.image)}
@@ -95,6 +95,7 @@ export default function OrderConfirmationPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-foreground text-sm font-serif">{item.name}</p>
+                          {item.size && <p className="text-subtle text-[10px] tracking-[0.2em] uppercase">{item.size}</p>}
                           <p className="text-subtle text-[11px]">Qty: {item.quantity}</p>
                         </div>
                         <p className="text-foreground-2 text-sm">

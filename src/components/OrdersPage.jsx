@@ -146,8 +146,8 @@ export default function OrdersPage() {
                         <div className="px-5 md:px-6 pb-6 border-t border-foreground/5 pt-4">
                           {/* Items */}
                           <div className="space-y-3 mb-6">
-                            {order.items.map((item, i) => (
-                              <div key={i} className="flex gap-3 items-center">
+                            {order.items.map((item) => (
+                              <div key={`${item.productId}-${item.size || 'default'}`} className="flex gap-3 items-center">
                                 <div className="w-10 h-12 bg-dim overflow-hidden flex-shrink-0 rounded-md border border-foreground/5">
                                   <img
                                     src={assetUrl(item.image)}
@@ -156,7 +156,7 @@ export default function OrdersPage() {
                                   />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-foreground text-sm truncate">{item.name}</p>
+                                  <p className="text-foreground text-sm truncate">{item.name}{item.size && <span className="text-subtle text-[10px] ml-1">({item.size})</span>}</p>
                                   <p className="text-subtle text-[11px]">x{item.quantity}</p>
                                 </div>
                                 <p className="text-foreground-2 text-sm">

@@ -122,6 +122,14 @@ mongoose.connect(mongoURI, {
     });
 
 // 3. Define Schema & Model
+const variantSchema = new mongoose.Schema({
+    size: { type: String, enum: ['8ml', '50ml', '100ml'], required: true },
+    price: { type: Number, required: true, min: 0 },
+    originalPrice: { type: Number, min: 0, default: null },
+    image: String,
+    stock: { type: Number, default: -1 }
+}, { _id: false });
+
 const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
     category: { type: String, required: true },
@@ -129,7 +137,8 @@ const productSchema = new mongoose.Schema({
     price: { type: Number, required: true, min: 0 },
     originalPrice: { type: Number, min: 0, default: null },
     stock: { type: Number, default: -1 },
-    description: String
+    description: String,
+    variants: { type: [variantSchema], default: [] }
 }, { collection: 'products' });
 
 const Product = mongoose.model('Product', productSchema);
@@ -171,6 +180,7 @@ const User = mongoose.model('User', userSchema);
 // Cart Schema
 const cartItemSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    size: { type: String, enum: ['8ml', '50ml', '100ml'], default: null },
     quantity: { type: Number, required: true, min: 1, default: 1 }
 });
 
@@ -191,6 +201,7 @@ const orderSchema = new mongoose.Schema({
     items: [{
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        size: { type: String, default: null },
         price: Number,
         quantity: Number,
         image: String
@@ -274,9 +285,10 @@ async function sendOrderEmails(order) {
 
     if (!resend) return;
 
-    const itemsList = order.items.map(item =>
-        `  - ${item.name} x${item.quantity} — Rs.${(item.price * item.quantity).toLocaleString('en-IN')}`
-    ).join('\n');
+    const itemsList = order.items.map(item => {
+        const sizeLabel = item.size ? ` (${item.size})` : '';
+        return `  - ${item.name}${sizeLabel} x${item.quantity} — Rs.${(item.price * item.quantity).toLocaleString('en-IN')}`;
+    }).join('\n');
 
     const addr = order.shippingAddress;
     const orderId = order._id.toString().slice(-8).toUpperCase();
@@ -960,21 +972,40 @@ app.get('/api/cart', authenticateToken, async (req, res) => {
 
         const validItems = cart.items.filter(item => item.productId != null);
 
-        const totalItems = validItems.reduce((sum, item) => sum + item.quantity, 0);
-        const totalPrice = validItems.reduce(
-            (sum, item) => sum + (item.productId.price || 0) * item.quantity, 0
+        const enrichedItems = validItems.map(item => {
+            const product = item.productId;
+            let price = product.price;
+            let originalPrice = product.originalPrice || null;
+            let image = product.image;
+
+            if (item.size && product.variants && product.variants.length > 0) {
+                const variant = product.variants.find(v => v.size === item.size);
+                if (variant) {
+                    price = variant.price;
+                    originalPrice = variant.originalPrice || null;
+                    image = variant.image || product.image;
+                }
+            }
+
+            return {
+                productId: product._id,
+                name: product.name,
+                category: product.category,
+                image,
+                price,
+                originalPrice,
+                quantity: item.quantity,
+                size: item.size || null
+            };
+        });
+
+        const totalItems = enrichedItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalPrice = enrichedItems.reduce(
+            (sum, item) => sum + (item.price || 0) * item.quantity, 0
         );
 
         res.status(200).json({
-            items: validItems.map(item => ({
-                productId: item.productId._id,
-                name: item.productId.name,
-                category: item.productId.category,
-                image: item.productId.image,
-                price: item.productId.price,
-                originalPrice: item.productId.originalPrice || null,
-                quantity: item.quantity
-            })),
+            items: enrichedItems,
             totalItems,
             totalPrice
         });
@@ -991,7 +1022,7 @@ app.post('/api/cart/add', authenticateToken, async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
-        const { productId, quantity: rawQty } = req.body;
+        const { productId, quantity: rawQty, size } = req.body;
         const quantity = Number(rawQty) || 1;
 
         if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
@@ -1002,30 +1033,44 @@ app.post('/api/cart/add', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Quantity must be between 1 and 99' });
         }
 
+        const validSizes = ['8ml', '50ml', '100ml'];
+        if (size && !validSizes.includes(size)) {
+            return res.status(400).json({ message: 'Invalid size' });
+        }
+
         const product = await Product.findById(productId).lean();
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
         }
-        if (product.stock === 0) {
+
+        // Check stock: variant-specific if size provided, otherwise top-level
+        if (size && product.variants && product.variants.length > 0) {
+            const variant = product.variants.find(v => v.size === size);
+            if (variant && variant.stock === 0) {
+                return res.status(400).json({ message: 'This size is sold out' });
+            }
+        } else if (product.stock === 0) {
             return res.status(400).json({ message: 'This product is sold out' });
         }
 
         let cart = await Cart.findOne({ userId: req.user.id });
+        const itemSize = size || null;
 
         if (!cart) {
             cart = new Cart({
                 userId: req.user.id,
-                items: [{ productId, quantity }]
+                items: [{ productId, quantity, size: itemSize }]
             });
         } else {
             const existingItem = cart.items.find(
                 item => item.productId.toString() === productId
+                     && (item.size || null) === itemSize
             );
 
             if (existingItem) {
                 existingItem.quantity += quantity;
             } else {
-                cart.items.push({ productId, quantity });
+                cart.items.push({ productId, quantity, size: itemSize });
             }
             cart.updatedAt = new Date();
         }
@@ -1047,7 +1092,8 @@ app.put('/api/cart/update', authenticateToken, async (req, res) => {
             return res.status(503).json({ message: "Database not connected" });
         }
 
-        const { productId, quantity } = req.body;
+        const { productId, quantity, size } = req.body;
+        const itemSize = size || null;
 
         if (!productId || quantity == null) {
             return res.status(400).json({ message: 'Product ID and quantity required' });
@@ -1060,11 +1106,13 @@ app.put('/api/cart/update', authenticateToken, async (req, res) => {
 
         if (quantity <= 0) {
             cart.items = cart.items.filter(
-                item => item.productId.toString() !== productId
+                item => !(item.productId.toString() === productId
+                       && (item.size || null) === itemSize)
             );
         } else {
             const item = cart.items.find(
                 item => item.productId.toString() === productId
+                     && (item.size || null) === itemSize
             );
             if (item) {
                 item.quantity = quantity;
@@ -1090,6 +1138,7 @@ app.delete('/api/cart/remove/:productId', authenticateToken, async (req, res) =>
         }
 
         const { productId } = req.params;
+        const itemSize = req.query.size || null;
 
         const cart = await Cart.findOne({ userId: req.user.id });
         if (!cart) {
@@ -1097,7 +1146,8 @@ app.delete('/api/cart/remove/:productId', authenticateToken, async (req, res) =>
         }
 
         cart.items = cart.items.filter(
-            item => item.productId.toString() !== productId
+            item => !(item.productId.toString() === productId
+                   && (item.size || null) === itemSize)
         );
         cart.updatedAt = new Date();
         await cart.save();
@@ -1177,16 +1227,31 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Cart is empty' });
         }
 
-        // Build order items snapshot
+        // Build order items snapshot (resolve variant price/image)
         const orderItems = cart.items
             .filter(item => item.productId != null)
-            .map(item => ({
-                productId: item.productId._id,
-                name: item.productId.name,
-                price: item.productId.price,
-                quantity: item.quantity,
-                image: item.productId.image
-            }));
+            .map(item => {
+                const product = item.productId;
+                let price = product.price;
+                let image = product.image;
+
+                if (item.size && product.variants && product.variants.length > 0) {
+                    const variant = product.variants.find(v => v.size === item.size);
+                    if (variant) {
+                        price = variant.price;
+                        image = variant.image || product.image;
+                    }
+                }
+
+                return {
+                    productId: product._id,
+                    name: product.name,
+                    size: item.size || null,
+                    price,
+                    quantity: item.quantity,
+                    image
+                };
+            });
 
         const totalAmount = orderItems.reduce(
             (sum, item) => sum + (item.price * item.quantity), 0

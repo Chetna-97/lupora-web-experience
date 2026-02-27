@@ -56,6 +56,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [selectedSize, setSelectedSize] = useState('50ml');
   const { addToCart } = useCart();
   const { isAuthenticated, user, setShowAuthModal } = useAuth();
   usePageTitle(product?.name || 'Product');
@@ -74,6 +75,7 @@ export default function ProductDetailPage() {
     window.scrollTo(0, 0);
     setQuantity(1);
     setAdded(false);
+    setSelectedSize('50ml');
     setReviewForm({ rating: 0, comment: '' });
     setReviewError('');
     setReviewSuccess('');
@@ -118,14 +120,15 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const handleAddToCart = async () => {
-    if (product.stock === 0) return;
+    if (displayStock === 0) return;
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
     try {
       setAdded(true);
-      await addToCart(product._id, quantity);
+      const sizeToSend = hasVariants ? selectedSize : null;
+      await addToCart(product._id, quantity, sizeToSend);
       setTimeout(() => setAdded(false), 1500);
     } catch (err) {
       console.error('Add to cart failed:', err);
@@ -134,13 +137,14 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = async () => {
-    if (product.stock === 0) return;
+    if (displayStock === 0) return;
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
     try {
-      await addToCart(product._id, quantity);
+      const sizeToSend = hasVariants ? selectedSize : null;
+      await addToCart(product._id, quantity, sizeToSend);
       navigate('/checkout');
     } catch (err) {
       console.error('Buy now failed:', err);
@@ -187,6 +191,30 @@ export default function ProductDetailPage() {
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : 0;
 
+  // Resolve variant-specific display data
+  const hasVariants = product?.variants?.length > 0;
+  const getDisplayData = () => {
+    if (!product) return { displayPrice: 0, displayOriginalPrice: null, displayImage: '', displayStock: -1 };
+    if (hasVariants) {
+      const variant = product.variants.find(v => v.size === selectedSize);
+      if (variant) {
+        return {
+          displayPrice: variant.price,
+          displayOriginalPrice: variant.originalPrice || null,
+          displayImage: variant.image || product.image,
+          displayStock: variant.stock != null ? variant.stock : product.stock,
+        };
+      }
+    }
+    return {
+      displayPrice: product.price,
+      displayOriginalPrice: product.originalPrice || null,
+      displayImage: product.image,
+      displayStock: product.stock,
+    };
+  };
+  const { displayPrice, displayOriginalPrice, displayImage, displayStock } = getDisplayData();
+
   return (
     <div className="min-h-screen bg-surface pt-24">
       {/* Product Detail */}
@@ -221,11 +249,11 @@ export default function ProductDetailPage() {
                   className="aspect-[3/4] bg-dim overflow-hidden rounded-2xl border border-foreground/5 shadow-2xl shadow-black/50 relative"
                 >
                   <img
-                    src={assetUrl(product.image)}
+                    src={assetUrl(displayImage)}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
-                  {product.stock === 0 && (
+                  {displayStock === 0 && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-2xl">
                       <span className="px-8 py-3 border border-white/30 text-white text-[10px] tracking-[0.4em] uppercase backdrop-blur-sm bg-black/30">
                         Sold Out
@@ -256,18 +284,44 @@ export default function ProductDetailPage() {
                     </div>
                   )}
 
-                  {product.price && (
+                  {displayPrice && (
                     <div className="mb-8">
-                      <PriceDisplay price={product.price} originalPrice={product.originalPrice} size="lg" />
+                      <PriceDisplay price={displayPrice} originalPrice={displayOriginalPrice} size="lg" />
                     </div>
                   )}
+
+                  {/* Size Selector */}
+                  {hasVariants && (
+                    <div className="mb-8">
+                      <p className="text-subtle text-[9px] tracking-[0.3em] uppercase mb-3">Size</p>
+                      <div className="flex gap-3">
+                        {product.variants.map(v => (
+                          <button
+                            key={v.size}
+                            onClick={() => setSelectedSize(v.size)}
+                            disabled={v.stock === 0}
+                            className={`px-5 py-2.5 text-xs tracking-[0.2em] uppercase border rounded-full transition-all duration-300
+                              ${selectedSize === v.size
+                                ? 'border-accent bg-accent/10 text-accent font-medium'
+                                : v.stock === 0
+                                  ? 'border-foreground/10 text-faint cursor-not-allowed line-through'
+                                  : 'border-foreground/20 text-muted hover:border-accent/50 hover:text-foreground'
+                              }`}
+                          >
+                            {v.size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {product.description && (
                     <p className="text-muted text-sm leading-loose mb-10 max-w-lg">
                       {product.description}
                     </p>
                   )}
 
-                  {product.stock === 0 ? (
+                  {displayStock === 0 ? (
                     <div className="flex items-center gap-3 px-10 py-4 bg-dim text-faint text-[10px] tracking-[0.3em] uppercase rounded-full cursor-not-allowed w-fit">
                       Sold Out
                     </div>

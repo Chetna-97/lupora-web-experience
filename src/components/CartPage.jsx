@@ -28,9 +28,9 @@ export default function CartPage() {
         refreshCart();
     }, [refreshCart]);
 
-    const handleUpdateQuantity = async (productId, newQuantity) => {
+    const handleUpdateQuantity = async (productId, newQuantity, size) => {
         if (newQuantity < 1) return;
-        await updateQuantity(productId, newQuantity);
+        await updateQuantity(productId, newQuantity, size);
     };
 
     return (
@@ -88,7 +88,7 @@ export default function CartPage() {
                             <AnimatePresence>
                                 {items.map((item) => (
                                     <motion.div
-                                        key={item.productId}
+                                        key={`${item.productId}-${item.size || 'default'}`}
                                         layout
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -114,6 +114,9 @@ export default function CartPage() {
                                                 <h3 className="text-foreground text-lg md:text-xl font-serif">
                                                     {item.name}
                                                 </h3>
+                                                {item.size && (
+                                                    <p className="text-subtle text-[10px] tracking-[0.2em] uppercase mt-0.5">{item.size}</p>
+                                                )}
                                                 <div className="mt-1">
                                                     <PriceDisplay price={item.price} originalPrice={item.originalPrice} />
                                                 </div>
@@ -123,7 +126,7 @@ export default function CartPage() {
                                             <div className="flex items-center justify-between mt-4">
                                                 <div className="flex items-center gap-4 border border-foreground/20 px-2 py-1">
                                                     <button
-                                                        onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
+                                                        onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1, item.size)}
                                                         disabled={item.quantity <= 1}
                                                         aria-label={`Decrease quantity of ${item.name}`}
                                                         className="text-muted hover:text-foreground disabled:opacity-30 transition-colors p-1"
@@ -134,7 +137,7 @@ export default function CartPage() {
                                                         {item.quantity}
                                                     </span>
                                                     <button
-                                                        onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                                                        onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1, item.size)}
                                                         aria-label={`Increase quantity of ${item.name}`}
                                                         className="text-muted hover:text-foreground transition-colors p-1"
                                                     >
@@ -142,7 +145,7 @@ export default function CartPage() {
                                                     </button>
                                                 </div>
                                                 <button
-                                                    onClick={() => removeFromCart(item.productId)}
+                                                    onClick={() => removeFromCart(item.productId, item.size)}
                                                     aria-label={`Remove ${item.name} from cart`}
                                                     className="text-faint hover:text-red-400 transition-colors p-2"
                                                 >

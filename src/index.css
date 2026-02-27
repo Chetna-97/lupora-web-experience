@@ -70,20 +70,22 @@
 }
 
 /* ── Base Styles ── */
-html {
-  scroll-behavior: smooth;
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-body {
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  background-color: var(--th-surface);
-  color: var(--th-fg);
-  font-family: 'Playfair Display', serif;
-}
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background-color: var(--th-surface);
+    color: var(--th-fg);
+    font-family: 'Playfair Display', serif;
+  }
 
-main, section, nav, footer {
-  position: relative;
-  z-index: 10;
+  main, section, footer {
+    position: relative;
+    z-index: 10;
+  }
 }

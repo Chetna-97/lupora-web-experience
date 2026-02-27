@@ -50,15 +50,15 @@ export default function GalleryPage() {
     busyRef.current = true;
     const newQty = currentQty + delta;
     try {
-      const cartItem = cartItems.find(ci => ci.productId === productId);
+      const cartItem = cartItems.find(ci => ci.productId === productId && (ci.size === '50ml' || ci.size === null));
       if (cartItem) {
         if (newQty < 1) {
-          await removeFromCart(productId);
+          await removeFromCart(productId, '50ml');
         } else {
-          await updateQuantity(productId, newQty);
+          await updateQuantity(productId, newQty, '50ml');
         }
       } else {
-        await addToCart(productId, 1);
+        await addToCart(productId, 1, '50ml');
       }
     } catch (err) {
       console.error('Cart update failed:', err);
@@ -73,7 +73,7 @@ export default function GalleryPage() {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
         if (!response.ok) throw new Error("Server response was not ok");
         const data = await response.json();
-        setProducts(data);
+        setProducts(data.filter(p => p.image));
       } catch (err) {
         console.error("Failed to fetch products:", err.message);
       } finally {
@@ -196,7 +196,7 @@ export default function GalleryPage() {
                       {product.stock === 0 ? (
                         <p className="mt-4 text-[9px] uppercase tracking-[0.4em] text-faint">Sold Out</p>
                       ) : (() => {
-                        const cartItem = cartItems.find(ci => ci.productId === product._id);
+                        const cartItem = cartItems.find(ci => ci.productId === product._id && (ci.size === '50ml' || ci.size === null));
                         const inCart = !!cartItem;
                         const displayQty = inCart ? cartItem.quantity : 0;
                         return (
